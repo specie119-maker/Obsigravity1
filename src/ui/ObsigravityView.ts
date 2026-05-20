@@ -462,6 +462,7 @@ export class ObsigravityView extends ItemView {
     this.inputEl.value = '';
     this.autoResizeInput();
 
+    if (this.handleCasualPrompt(prompt)) return;
     if (this.handleLocalSlashCommand(prompt)) return;
 
     this.isRunning = true;
@@ -512,6 +513,26 @@ export class ObsigravityView extends ItemView {
     } finally {
       this.isRunning = false;
     }
+  }
+
+  private handleCasualPrompt(prompt: string): boolean {
+    const normalized = prompt
+      .trim()
+      .toLowerCase()
+      .replace(/[!！?.。~～\s]+$/g, '');
+    const casualResponses: Record<string, string> = {
+      안녕: '안녕하세요! 무엇을 도와드릴까요?',
+      하이: '하이! 무엇을 해볼까요?',
+      hello: 'Hello! What would you like to work on?',
+      hi: 'Hi! What would you like to do?',
+      hey: 'Hey! What can I help with?',
+    };
+    const response = casualResponses[normalized];
+    if (!response) return false;
+
+    this.appendMessage({ role: 'user', content: prompt, timestamp: Date.now() });
+    this.appendMessage({ role: 'assistant', content: response, timestamp: Date.now() });
+    return true;
   }
 
   private handleLocalSlashCommand(prompt: string): boolean {

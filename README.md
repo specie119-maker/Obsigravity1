@@ -12,6 +12,7 @@ V1 focuses on the capability that is currently native in the local Antigravity C
 - **Claude/Gemini tool import**: Bring Claude Code or Gemini plugin packs into Antigravity through `agy plugin import`.
 - **Claude slash catalog**: Discover local Claude Code commands and skills so they appear in Obsigravity slash suggestions.
 - **Local slash handling**: `/skills`, `/help`, and `/model` are handled inside Obsigravity instead of being sent to AGY as raw prompts.
+- **Brief casual replies**: Simple greetings are answered locally instead of triggering active-note analysis.
 - **External CLI detection**: Auto-detect optional Claude Code, Codex CLI, and Grok CLI installs so future slash-command routes can enable themselves only when available.
 - **Model preference**: Choose a preferred AGY model lane from the sidebar or settings. Obsigravity passes the preference into each run while AGY keeps control of actual model switching.
 - **Image generation from notes**: Draft a production prompt from the active note, review it, generate a raster image with Antigravity, save it into the vault, and embed it in the note.

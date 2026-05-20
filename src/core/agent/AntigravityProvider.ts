@@ -69,7 +69,7 @@ export class AntigravityProvider implements AgentProvider {
   private buildPrompt(input: AgentQuery): string {
     const parts: string[] = [];
     parts.push('You are Antigravity CLI running from an Obsidian plugin workflow named Obsigravity.');
-    parts.push('Use the active note as the creative source of truth. Keep all file writes inside the provided vault workspace.');
+    parts.push('Use active note context only when the user asks to analyze, transform, generate from, or otherwise work with the note. For greetings, small talk, or general questions, answer the user directly and briefly without analyzing the active note.');
     parts.push('Be capability-honest: use native Antigravity tools only. Do not fake unsupported video or TTS outputs.');
     parts.push('Lean into Antigravity strengths: agent runtime planning, local file workflow, plugin/extensibility awareness, and clear verification.');
 
