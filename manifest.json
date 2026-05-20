@@ -1,0 +1,14 @@
+{
+  "id": "obsigravity",
+  "name": "Obsigravity",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Generate Antigravity-native images from Obsidian notes and embed them in your vault.",
+  "author": "reallygood83",
+  "authorUrl": "https://x.com/reallygood83",
+  "fundingUrl": {
+    "YouTube": "https://www.youtube.com/@%EB%B0%B0%EC%9B%80%EC%9D%98%EB%8B%AC%EC%9D%B8-p5v",
+    "X": "https://x.com/reallygood83"
+  },
+  "isDesktopOnly": true
+}

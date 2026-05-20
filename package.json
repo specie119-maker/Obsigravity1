@@ -1,0 +1,30 @@
+{
+  "name": "obsigravity",
+  "version": "0.1.0",
+  "description": "Obsigravity - Antigravity CLI image generation inside Obsidian",
+  "main": "main.js",
+  "scripts": {
+    "build:css": "node scripts/build-css.mjs",
+    "dev": "npm run build:css && node esbuild.config.mjs --watch",
+    "build": "npm run build:css && tsc --noEmit && node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "obsidian",
+    "antigravity",
+    "gemini",
+    "google",
+    "ai"
+  ],
+  "author": "reallygood83",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.27.1",
+    "obsidian": "latest",
+    "tslib": "^2.8.1",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {}
+}
