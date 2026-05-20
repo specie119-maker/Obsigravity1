@@ -114,7 +114,9 @@ export class AntigravityProvider implements AgentProvider {
 
     const queue: AgentEvent[] = [];
     let stdoutBuffer = '';
+    let stdoutFull = '';
     let stderrBuffer = '';
+    let stderrFull = '';
     let done = false;
     let exitCode: number | null = null;
     const timeout = window.setTimeout(() => {
@@ -123,7 +125,9 @@ export class AntigravityProvider implements AgentProvider {
     }, 5 * 60 * 1000);
 
     child.stdout.on('data', (chunk: Buffer) => {
-      stdoutBuffer += chunk.toString();
+      const text = chunk.toString();
+      stdoutFull += text;
+      stdoutBuffer += text;
       const lines = stdoutBuffer.split(/\r?\n/);
       stdoutBuffer = lines.pop() || '';
       for (const line of lines) {
@@ -132,7 +136,9 @@ export class AntigravityProvider implements AgentProvider {
       }
     });
     child.stderr.on('data', (chunk: Buffer) => {
-      stderrBuffer += chunk.toString();
+      const text = chunk.toString();
+      stderrFull += text;
+      stderrBuffer += text;
     });
     child.on('error', (error) => {
       queue.push({ type: 'error', content: error.message });
@@ -142,7 +148,7 @@ export class AntigravityProvider implements AgentProvider {
       exitCode = code;
       window.clearTimeout(timeout);
       if (code && code !== 0) {
-        const details = stderrBuffer.trim() ? `\n\n${stderrBuffer.trim()}` : '';
+        const details = stderrFull.trim() ? `\n\n${this.cleanOutput(stderrFull).trim()}` : '';
         queue.push({ type: 'error', content: `Antigravity CLI exited with code ${code}.${details}` });
       }
       done = true;
@@ -158,7 +164,7 @@ export class AntigravityProvider implements AgentProvider {
     }
 
     if (exitCode === 0) {
-      const finalText = [stdoutBuffer, stderrBuffer].join('\n').trim();
+      const finalText = this.cleanFinalText(stdoutFull, stderrFull);
       if (finalText) yield { type: 'text', content: finalText };
     }
 
@@ -166,12 +172,27 @@ export class AntigravityProvider implements AgentProvider {
   }
 
   private formatProgressLine(line: string): string {
-    const cleaned = line.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '').trim();
+    const cleaned = this.cleanOutput(line).trim();
     if (!cleaned) return '';
     if (/^(generating|creating|copying|writing|verifying|saved|status=|output=|evidence=)/i.test(cleaned)) {
       return cleaned.slice(0, 240);
     }
     if (/^(•|-|\*) /i.test(cleaned)) return cleaned.slice(0, 240);
     return '';
+  }
+
+  private cleanFinalText(stdout: string, stderr: string): string {
+    const cleanedStdout = this.cleanOutput(stdout).trim();
+    const cleanedStderr = this.cleanOutput(stderr)
+      .split(/\r?\n/)
+      .filter((line) => !/^\d{4}-\d{2}-\d{2}T.*\bWARN\b/.test(line.trim()))
+      .join('\n')
+      .trim();
+
+    return [cleanedStdout, cleanedStderr].filter(Boolean).join('\n\n').trim();
+  }
+
+  private cleanOutput(text: string): string {
+    return text.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '');
   }
 }

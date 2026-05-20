@@ -461,6 +461,9 @@ export class ObsigravityView extends ItemView {
 
     this.inputEl.value = '';
     this.autoResizeInput();
+
+    if (this.handleLocalSlashCommand(prompt)) return;
+
     this.isRunning = true;
     this.appendMessage({ role: 'user', content: prompt, timestamp: Date.now() });
 
@@ -509,6 +512,59 @@ export class ObsigravityView extends ItemView {
     } finally {
       this.isRunning = false;
     }
+  }
+
+  private handleLocalSlashCommand(prompt: string): boolean {
+    if (prompt === '/skills') {
+      this.appendMessage({ role: 'user', content: prompt, timestamp: Date.now() });
+      const tools = this.plugin.getClaudeTools();
+      const commands = tools.filter((tool) => tool.kind === 'command').slice(0, 40);
+      const skills = tools.filter((tool) => tool.kind === 'skill').slice(0, 40);
+      const lines = [
+        `Found ${tools.length} local Claude tools.`,
+        '',
+        '## Claude commands',
+        commands.length ? commands.map((tool) => `- \`/${tool.name}\` - ${tool.description}`).join('\n') : '- None detected',
+        '',
+        '## Claude skills',
+        skills.length ? skills.map((tool) => `- \`/${tool.name}\` - ${tool.description}`).join('\n') : '- None detected',
+        '',
+        'These are now shown in the slash picker. Provider execution routing is coming next.',
+      ];
+      this.appendMessage({ role: 'assistant', content: lines.join('\n'), timestamp: Date.now() });
+      return true;
+    }
+
+    if (prompt === '/help') {
+      this.appendMessage({ role: 'user', content: prompt, timestamp: Date.now() });
+      this.appendMessage({
+        role: 'assistant',
+        content: [
+          'Obsigravity slash commands:',
+          '',
+          '- `/skills` lists local Claude commands and skills.',
+          '- `/image` starts image-generation prompting from the active note.',
+          '- `/model` shows model preference guidance.',
+          '- `/claude`, `/codex`, and `/grok` routing is planned after connector execution adapters land.',
+          '',
+          'You can also type normal text and press Enter to send it to Antigravity.',
+        ].join('\n'),
+        timestamp: Date.now(),
+      });
+      return true;
+    }
+
+    if (prompt === '/model') {
+      this.appendMessage({ role: 'user', content: prompt, timestamp: Date.now() });
+      this.appendMessage({
+        role: 'assistant',
+        content: `Current model preference: \`${this.plugin.settings.preferredModel}\`.\n\nUse the model selector in the input toolbar or settings to change it.`,
+        timestamp: Date.now(),
+      });
+      return true;
+    }
+
+    return false;
   }
 
   private appendMessage(message: ConversationMessage): void {
