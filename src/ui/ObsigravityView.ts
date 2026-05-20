@@ -50,6 +50,7 @@ export class ObsigravityView extends ItemView {
   private discoveredSlashCommands: SlashCommand[] = [];
   private currentConversationId: string | null = null;
   private isRunning = false;
+  private isComposingInput = false;
   private selectedSlashCommandIndex = 0;
 
   constructor(leaf: WorkspaceLeaf, plugin: ObsigravityPlugin) {
@@ -160,10 +161,19 @@ export class ObsigravityView extends ItemView {
     });
     this.inputEl.addEventListener('keydown', (event) => {
       if (this.handleSlashKeydown(event)) return;
+      if (this.isComposingInput || event.isComposing || event.keyCode === 229) return;
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
         void this.submit();
       }
+    });
+    this.inputEl.addEventListener('compositionstart', () => {
+      this.isComposingInput = true;
+    });
+    this.inputEl.addEventListener('compositionend', () => {
+      window.setTimeout(() => {
+        this.isComposingInput = false;
+      }, 0);
     });
     this.inputEl.addEventListener('input', () => {
       this.autoResizeInput();
