@@ -7,9 +7,11 @@ import { detectExternalClis } from './core/cli/ExternalCliResolver';
 import { draftVisualPrompt, generateVisualAsset } from './core/images/VisualAssetService';
 import { buildImagePrompt } from './core/images/ImagePromptBuilder';
 import { buildProcessEnv } from './core/settings/env';
+import { generateGrokVideoFromNote } from './core/video/GrokVideoService';
 import type { ObsigravitySettings } from './core/types';
 import { DEFAULT_SETTINGS } from './core/types';
 import { ObsigravityView, VIEW_TYPE_OBSIGRAVITY } from './ui/ObsigravityView';
+import { GrokVideoGenerationModal } from './ui/modals/GrokVideoGenerationModal';
 import { ImageGenerationModal } from './ui/modals/ImageGenerationModal';
 import { VisualGenerationProgressModal } from './ui/modals/VisualGenerationProgressModal';
 import { VisualPromptPreviewModal } from './ui/modals/VisualPromptPreviewModal';
@@ -49,6 +51,12 @@ export default class ObsigravityPlugin extends Plugin {
       id: 'generate-image-from-note',
       name: 'Generate Obsigravity image from active note',
       callback: () => void this.generateImageFromActiveNote(),
+    });
+
+    this.addCommand({
+      id: 'generate-grok-video-from-note',
+      name: 'Generate Grok video from active note',
+      callback: () => void this.generateGrokVideoFromActiveNote(),
     });
 
     this.addCommand({
@@ -301,7 +309,7 @@ export default class ObsigravityPlugin extends Plugin {
     const input = await new ImageGenerationModal(this.app).openAndWait();
     if (!input) return;
 
-    const progressModal = new VisualGenerationProgressModal(this.app);
+    const progressModal = new VisualGenerationProgressModal(this.app, 'Generating Obsigravity image');
     progressModal.open();
     progressModal.addStep(`Obsigravity source note: ${activeFile.path}`);
     progressModal.addStep(`Antigravity format: ${input.mode}`);
@@ -337,7 +345,7 @@ export default class ObsigravityPlugin extends Plugin {
       const reviewedPrompt = await new VisualPromptPreviewModal(this.app, promptForReview, 'png').openAndWait();
       if (!reviewedPrompt) return;
 
-      const generationProgressModal = new VisualGenerationProgressModal(this.app);
+      const generationProgressModal = new VisualGenerationProgressModal(this.app, 'Generating Obsigravity image');
       activeProgressModal = generationProgressModal;
       generationProgressModal.open();
       generationProgressModal.addStep('Generating Antigravity-native image and embedding it in the note...');
@@ -366,8 +374,50 @@ export default class ObsigravityPlugin extends Plugin {
     }
   }
 
+  async generateGrokVideoFromActiveNote(direction = ''): Promise<void> {
+    const activeFile = this.getActiveMarkdownFile();
+    const context = await this.getActiveNoteContext();
+    if (!context || !activeFile) {
+      new Notice('Open a markdown note before generating a Grok video.');
+      return;
+    }
+
+    const input = direction.trim()
+      ? { prompt: direction }
+      : await new GrokVideoGenerationModal(this.app).openAndWait();
+    if (!input) return;
+
+    const progressModal = new VisualGenerationProgressModal(this.app, 'Generating Grok video');
+    progressModal.open();
+    progressModal.addStep(`Grok video source note: ${activeFile.path}`);
+    progressModal.addStep('Capability gate: Grok Build must create a real MP4, or report NOT_AVAILABLE.');
+
+    try {
+      const noteContent = context.content || await this.app.vault.read(activeFile);
+      const generated = await generateGrokVideoFromNote({
+        app: this.app,
+        settings: this.settings,
+        vaultPath: this.getVaultPath(),
+        file: activeFile,
+        mediaFolder: this.settings.mediaFolder,
+        noteContent,
+        selectedText: context.selection,
+        pinnedNotes: context.pinnedNotes,
+        userPrompt: input.prompt,
+        onProgress: (message) => progressModal.addStep(message),
+      });
+
+      progressModal.finish(`Grok video embedded: ${generated.path}`, 'success');
+      new Notice(`Grok video embedded: ${generated.path}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      progressModal.finish(`Grok video failed: ${message}`, 'error');
+      new Notice(`Grok video failed: ${message}`);
+    }
+  }
+
   async probeAntigravityCapabilities(): Promise<void> {
-    const progressModal = new VisualGenerationProgressModal(this.app);
+    const progressModal = new VisualGenerationProgressModal(this.app, 'Probing Antigravity capabilities');
     progressModal.open();
     progressModal.addStep('Probing Antigravity native media capabilities...');
     let transcript = '';

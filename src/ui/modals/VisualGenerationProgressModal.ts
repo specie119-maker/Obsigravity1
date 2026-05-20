@@ -5,16 +5,18 @@ export type VisualProgressState = 'running' | 'success' | 'error';
 export class VisualGenerationProgressModal extends Modal {
   private listEl: HTMLElement | null = null;
   private statusEl: HTMLElement | null = null;
+  private title: string;
 
-  constructor(app: App) {
+  constructor(app: App, title = 'Generating Obsigravity media') {
     super(app);
+    this.title = title;
   }
 
   onOpen(): void {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass('obsigravity-visual-progress-modal');
-    contentEl.createEl('h2', { text: 'Generating Obsigravity image' });
+    contentEl.createEl('h2', { text: this.title });
     this.statusEl = contentEl.createDiv({ cls: 'obsigravity-visual-progress-status', text: 'Starting...' });
     this.listEl = contentEl.createDiv({ cls: 'obsigravity-visual-progress-list' });
   }

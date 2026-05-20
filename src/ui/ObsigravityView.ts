@@ -29,6 +29,7 @@ const ANTIGRAVITY_SLASH_COMMANDS: SlashCommand[] = [
   { name: '/config', hint: 'Settings', description: 'Open or inspect Antigravity CLI settings.' },
   { name: '/probe', hint: 'Probe media support', description: 'Check native image, video, and TTS capability honesty.' },
   { name: '/image', hint: 'Generate image', description: 'Generate an Antigravity-native image from the active note.' },
+  { name: '/grok-video', hint: 'Generate video', description: 'Generate a Grok Build MP4 from the active note and embed it.' },
   { name: '/diff', hint: 'Review vault changes', description: 'Ask Antigravity to summarize local file changes.' },
   { name: '/claude', hint: 'Claude Code CLI', description: 'Send the request to the local Claude Code CLI with note context.' },
   { name: '/codex', hint: 'Codex CLI', description: 'Send the request to the local Codex CLI with note context.' },
@@ -130,6 +131,11 @@ export class ObsigravityView extends ItemView {
     setIcon(visualBtn, 'image');
     visualBtn.setAttribute('aria-label', 'Generate Obsigravity image from note');
     visualBtn.addEventListener('click', () => void this.plugin.generateImageFromActiveNote());
+
+    const videoBtn = headerActions.createDiv({ cls: 'oc-header-btn' });
+    setIcon(videoBtn, 'video');
+    videoBtn.setAttribute('aria-label', 'Generate Grok video from note');
+    videoBtn.addEventListener('click', () => void this.plugin.generateGrokVideoFromActiveNote());
 
     const newBtn = headerActions.createDiv({ cls: 'oc-header-btn' });
     setIcon(newBtn, 'plus');
@@ -571,6 +577,7 @@ export class ObsigravityView extends ItemView {
           '',
           '- `/skills` lists local Claude commands and skills.',
           '- `/image` starts image-generation prompting from the active note.',
+          '- `/grok-video <direction>` asks Grok Build to generate and embed an MP4 from the active note.',
           '- `/model` shows model preference guidance.',
           '- `/claude <task>` runs local Claude Code CLI.',
           '- `/codex <task>` runs local Codex CLI.',
@@ -591,6 +598,12 @@ export class ObsigravityView extends ItemView {
         content: `Current model preference: \`${this.plugin.settings.preferredModel}\`.\n\nUse the model selector in the input toolbar or settings to change it.`,
         timestamp: Date.now(),
       });
+      return true;
+    }
+
+    const videoMatch = prompt.match(/^\/grok-video(?:\s+([\s\S]+))?$/);
+    if (videoMatch) {
+      await this.plugin.generateGrokVideoFromActiveNote((videoMatch[1] || '').trim());
       return true;
     }
 

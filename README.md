@@ -2,7 +2,7 @@
 
 Obsigravity is a desktop-only Obsidian plugin that connects your vault to the Antigravity CLI (`agy`).
 
-V1 focuses on the capability that is currently native in the local Antigravity CLI environment: **image generation from the active note**. Video generation and TTS/audio briefing are intentionally capability-gated until Antigravity exposes native tools for them.
+V1 focuses on the capability that is currently native in the local Antigravity CLI environment: **image generation from the active note**. Antigravity-native video and TTS/audio briefing remain capability-gated until Antigravity exposes native tools for them; Grok Build video is available as an explicit external-CLI lane when `grok` is installed.
 
 ## What It Does
 
@@ -19,6 +19,7 @@ V1 focuses on the capability that is currently native in the local Antigravity C
 - **External CLI routing**: Use `/claude`, `/codex`, `/grok`, or `/collab` to call local Claude Code, Codex CLI, and Grok Build from the Obsidian sidebar with active-note context.
 - **Model preference**: Choose a preferred AGY model lane from the sidebar or settings. Obsigravity passes the preference into each run while AGY keeps control of actual model switching.
 - **Image generation from notes**: Draft a production prompt from the active note, review it, generate a raster image with Antigravity, save it into the vault, and embed it in the note.
+- **Grok Build video generation**: Use the video button, command palette, or `/grok-video` to ask Grok Build to generate a real MP4 from the active note and embed it.
 - **Capability probe**: Check native Antigravity support for image, video, and TTS without silently falling back to other providers.
 
 ## Current Capability Boundary
@@ -28,7 +29,7 @@ Local testing showed:
 | Capability | V1 status | Policy |
 | --- | --- | --- |
 | Image | Enabled | Uses Antigravity native image generation |
-| Generative video | Not enabled | Marked future/planned until native support exists |
+| Generative video | Experimental | Uses Grok Build when installed; AGY-native video remains disabled |
 | TTS/audio briefing | Not enabled | Marked future/planned until native support exists |
 
 Obsigravity does **not** use Gemini CLI/API, Vertex AI, Veo, browser recording, ffmpeg, HTML animation, SVG/code drawing, or placeholder files as hidden fallbacks for unsupported media lanes.
@@ -70,9 +71,12 @@ Obsigravity can call local companion CLIs when they are installed:
 - `/claude <task>` sends the task to Claude Code CLI.
 - `/codex <task>` sends the task to Codex CLI.
 - `/grok <task>` sends the task to Grok Build CLI.
+- `/grok-video <direction>` asks Grok Build to generate and embed an MP4 from the active note.
 - `/collab <task>` runs Claude, Codex, and Grok in parallel and renders a multi-model comparison.
 
 The active note, selected text, and pinned notes are included as context. Permission mode maps conservatively into each CLI: Safe uses read-only/default behavior, Auto allows normal automatic workspace work where supported, and Yolo maps to each CLI's bypass/full-access mode.
+
+For video, Grok Build must create a real playable MP4 at the exact vault-relative target path. Obsigravity refuses placeholders and embeds the file only after it exists.
 
 Official install commands used by the plugin:
 
@@ -128,4 +132,4 @@ Then enable **Obsigravity** in Obsidian settings.
 - Safe mode runs Antigravity with sandboxing.
 - Auto and Yolo auto-approve Antigravity tool permission requests and should only be used in trusted, backed-up vaults.
 - Generated files are saved inside the configured vault media folder.
-- Obsigravity keeps video/TTS disabled unless Antigravity exposes native generation support.
+- Obsigravity keeps AGY-native video/TTS disabled unless Antigravity exposes native generation support. Grok Build video is an explicit external-CLI lane.
