@@ -4,6 +4,7 @@ import type ObsigravityPlugin from '../../main';
 import { findAntigravityCli } from '../../core/antigravity/AntigravityCliResolver';
 import { detectExternalClis, EXTERNAL_CLI_DEFINITIONS, type ExternalCliId } from '../../core/cli/ExternalCliResolver';
 import {
+  convertClaudeToolsForAntigravity,
   importAntigravityPlugins,
   getAntigravityAuthPreview,
   getAntigravityInstallPreview,
@@ -113,12 +114,15 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
     const pluginCard = containerEl.createDiv({ cls: 'obsigravity-settings-card' });
     pluginCard.createEl('h3', { text: 'Skills and slash tools' });
     pluginCard.createEl('p', {
-      text: 'Import Claude Code or Gemini plugin packs into Antigravity with agy plugin import, then use their skills and slash-command surfaces from Obsigravity prompts.',
+      text: 'Convert local Claude Code skills and slash commands into an Antigravity plugin, or use AGY\'s native plugin import for supported sources.',
     });
     new Setting(pluginCard)
       .addButton((button) => button
-        .setButtonText('Import Claude')
+        .setButtonText('Convert Claude skills')
         .setCta()
+        .onClick(() => void this.convertClaudeTools()))
+      .addButton((button) => button
+        .setButtonText('Import Claude')
         .onClick(() => void this.importPlugins('claude')))
       .addButton((button) => button
         .setButtonText('Import Gemini')
@@ -132,7 +136,7 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
 
     pluginCard.createEl('p', {
       cls: 'obsigravity-settings-hint',
-      text: 'Obsigravity does not copy secrets. Imports are delegated to the local AGY plugin manager.',
+      text: 'Conversion copies local markdown instructions only, writes an obsigravity-claude-tools AGY plugin, then asks AGY to validate, install, and enable it.',
     });
 
     const externalCliCard = containerEl.createDiv({ cls: 'obsigravity-settings-card' });
@@ -319,6 +323,23 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
       const message = error instanceof Error ? error.message : String(error);
       this.appendSetupLog(`\nFAILED: ${message}\n`);
       new Notice(`Antigravity plugin import failed: ${message}`);
+    }
+  }
+
+  private async convertClaudeTools(): Promise<void> {
+    this.resetSetupLog('Converting Claude Code skills into an Antigravity plugin...');
+    try {
+      const result = await convertClaudeToolsForAntigravity(
+        this.plugin.settings.antigravityCliPath,
+        this.plugin.settings.environmentVariables,
+        this.plugin.getVaultPath(),
+        (line) => this.appendSetupLog(line),
+      );
+      new Notice(`Converted ${result.skillsImported} skills and ${result.commandsImported} commands for AGY.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.appendSetupLog(`\nFAILED: ${message}\n`);
+      new Notice(`Claude skill conversion failed: ${message}`);
     }
   }
 

@@ -2,6 +2,11 @@ import { spawn } from 'child_process';
 import * as path from 'path';
 
 import { findAntigravityCli } from '../antigravity/AntigravityCliResolver';
+import {
+  convertClaudeToolsToAntigravityPlugin,
+  OBSIGRAVITY_CLAUDE_PLUGIN_NAME,
+  type ClaudeToAntigravityImportResult,
+} from '../claude/ClaudeToAntigravityImporter';
 import { buildProcessEnv, mergePath } from '../settings/env';
 
 export type InstallLog = (line: string) => void;
@@ -92,6 +97,40 @@ export async function importAntigravityPlugins(
   await runProcess(detected, ['plugin', 'list'], env, cwd, log);
 }
 
+export async function convertClaudeToolsForAntigravity(
+  agyPath: string,
+  envText: string,
+  cwd: string,
+  log: InstallLog
+): Promise<ClaudeToAntigravityImportResult> {
+  log('Converting local Claude Code skills and slash commands into an AGY plugin bundle...\n');
+  const result = convertClaudeToolsToAntigravityPlugin(log);
+  const detected = resolveAntigravityCli(agyPath, envText);
+  const env = buildProcessEnv(envText);
+  env.PATH = mergePath(env.PATH, [path.dirname(detected)]);
+
+  log(`\n$ ${detected} plugin validate ${result.pluginDir}\n`);
+  await runProcess(detected, ['plugin', 'validate', result.pluginDir], env, cwd, log);
+
+  log(`\n$ ${detected} plugin install ${result.pluginDir}\n`);
+  await runProcess(detected, ['plugin', 'install', result.pluginDir], env, cwd, log);
+
+  log(`\n$ ${detected} plugin enable ${OBSIGRAVITY_CLAUDE_PLUGIN_NAME}\n`);
+  await runProcessBestEffort(
+    detected,
+    ['plugin', 'enable', OBSIGRAVITY_CLAUDE_PLUGIN_NAME],
+    env,
+    cwd,
+    log,
+    'Enable did not complete. Continuing because the plugin may already be enabled.'
+  );
+
+  log(`\n$ ${detected} plugin list\n`);
+  await runProcess(detected, ['plugin', 'list'], env, cwd, log);
+
+  return result;
+}
+
 export async function listAntigravityPlugins(
   agyPath: string,
   envText: string,
@@ -150,4 +189,20 @@ function runProcess(
       resolve();
     });
   });
+}
+
+async function runProcessBestEffort(
+  command: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+  log: InstallLog,
+  failureNote: string
+): Promise<void> {
+  try {
+    await runProcess(command, args, env, cwd, log);
+  } catch (error) {
+    log(`\nNOTE ${failureNote}\n`);
+    log(`NOTE ${error instanceof Error ? error.message : String(error)}\n`);
+  }
 }

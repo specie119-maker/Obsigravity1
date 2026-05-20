@@ -10,6 +10,7 @@ V1 focuses on the capability that is currently native in the local Antigravity C
 - **Active note context**: The current note, selected text, and pinned notes can be sent to Antigravity automatically.
 - **Conversation history**: Reopen recent plugin conversations from the header history menu.
 - **Claude/Gemini tool import**: Bring Claude Code or Gemini plugin packs into Antigravity through `agy plugin import`.
+- **Claude-to-AGY conversion**: One-click convert local Claude Code skills and slash commands into an Antigravity plugin that AGY can validate, install, enable, and use.
 - **Claude slash catalog**: Discover local Claude Code commands and skills so they appear in Obsigravity slash suggestions.
 - **Local slash handling**: `/skills`, `/help`, and `/model` are handled inside Obsigravity instead of being sent to AGY as raw prompts.
 - **Brief casual replies**: Simple greetings are answered locally instead of triggering active-note analysis.
@@ -55,6 +56,7 @@ The settings page includes:
 - **Install / update AGY**: runs the official Antigravity CLI installer.
 - **Start Google Sign-In**: starts Antigravity CLI so it can open the browser-based Google OAuth flow when no saved session exists.
 - **Recheck**: verifies `agy --help` from Obsidian's environment and saves the detected CLI path.
+- **Convert Claude skills**: generates `~/.gemini/obsigravity/plugins/obsigravity-claude-tools` from local Claude Code `SKILL.md` files and slash-command markdown, then runs `agy plugin validate`, `agy plugin install`, `agy plugin enable`, and `agy plugin list`.
 - **Import Claude/Gemini plugins**: runs `agy plugin import claude`, `agy plugin import gemini`, or both.
 - **Claude command discovery**: scans local Claude Code command and skill folders and exposes them in the slash picker.
 - **External CLI connectors**: detects local `claude`, `codex`, and `grok` binaries and stores their paths for future provider routing.
