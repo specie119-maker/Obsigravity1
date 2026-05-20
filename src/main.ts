@@ -158,6 +158,13 @@ export default class ObsigravityPlugin extends Plugin {
     return discoverClaudeTools();
   }
 
+  refreshObsigravityViews(): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_OBSIGRAVITY)) {
+      const view = leaf.view;
+      if (view instanceof ObsigravityView) view.refreshDiscoveredSlashCommands();
+    }
+  }
+
   async activateView(): Promise<void> {
     const { workspace } = this.app;
     let leaf = workspace.getLeavesOfType(VIEW_TYPE_OBSIGRAVITY)[0];

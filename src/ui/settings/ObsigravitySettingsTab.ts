@@ -318,6 +318,7 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
         this.plugin.getVaultPath(),
         (line) => this.appendSetupLog(line),
       );
+      this.plugin.refreshObsigravityViews();
       new Notice(`Antigravity plugin import finished: ${source}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -335,6 +336,7 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
         this.plugin.getVaultPath(),
         (line) => this.appendSetupLog(line),
       );
+      this.plugin.refreshObsigravityViews();
       new Notice(`Converted ${result.skillsImported} skills and ${result.commandsImported} commands for AGY.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

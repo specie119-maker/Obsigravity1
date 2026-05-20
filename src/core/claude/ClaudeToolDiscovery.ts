@@ -73,25 +73,32 @@ function collectSkillFiles(dirPath: string, maxDepth = 3): string[] {
   return files;
 }
 
-export function discoverClaudeTools(limit = 220): DiscoveredClaudeTool[] {
+interface SearchRoot {
+  path: string;
+  depth: number;
+}
+
+export function discoverClaudeTools(limit = 1000): DiscoveredClaudeTool[] {
   const home = os.homedir();
   const claudeHome = path.join(home, '.claude');
-  const commandRoots = [
-    path.join(claudeHome, 'commands'),
-    path.join(claudeHome, '.opencode', 'commands'),
-    path.join(claudeHome, 'plugins', 'marketplaces'),
+  const commandRoots: SearchRoot[] = [
+    { path: path.join(claudeHome, 'commands'), depth: 1 },
+    { path: path.join(claudeHome, '.opencode', 'commands'), depth: 1 },
+    { path: path.join(claudeHome, 'plugins', 'marketplaces'), depth: 4 },
   ];
-  const skillRoots = [
-    path.join(claudeHome, 'skills'),
-    path.join(claudeHome, '.agents', 'skills'),
-    path.join(claudeHome, '.cursor', 'skills'),
-    path.join(claudeHome, 'plugins', 'marketplaces'),
+  const skillRoots: SearchRoot[] = [
+    { path: path.join(claudeHome, 'skills'), depth: 4 },
+    { path: path.join(claudeHome, '.agents', 'skills'), depth: 3 },
+    { path: path.join(claudeHome, '.cursor', 'skills'), depth: 3 },
+    { path: path.join(claudeHome, 'plugins', 'marketplaces'), depth: 5 },
+    { path: path.join(home, '.codex', 'skills'), depth: 3 },
+    { path: path.join(home, '.agents', 'skills'), depth: 3 },
   ];
 
   const tools = new Map<string, DiscoveredClaudeTool>();
 
   for (const root of commandRoots) {
-    for (const filePath of collectMarkdownFiles(root, root.endsWith('marketplaces') ? 4 : 1)) {
+    for (const filePath of collectMarkdownFiles(root.path, root.depth)) {
       if (!filePath.includes(`${path.sep}commands${path.sep}`) && !filePath.includes(`${path.sep}.opencode${path.sep}commands${path.sep}`)) continue;
       const name = path.basename(filePath, '.md');
       if (!name || name.toLowerCase() === 'readme') continue;
@@ -108,7 +115,7 @@ export function discoverClaudeTools(limit = 220): DiscoveredClaudeTool[] {
   }
 
   for (const root of skillRoots) {
-    for (const filePath of collectSkillFiles(root, root.endsWith('marketplaces') ? 5 : 2)) {
+    for (const filePath of collectSkillFiles(root.path, root.depth)) {
       if (!isFile(filePath)) continue;
       const name = path.basename(path.dirname(filePath));
       if (!name || name.toLowerCase() === 'skills') continue;

@@ -418,7 +418,7 @@ export class ObsigravityView extends ItemView {
     return [...commands.values()];
   }
 
-  private refreshDiscoveredSlashCommands(): void {
+  refreshDiscoveredSlashCommands(): void {
     const tools = this.plugin.getClaudeTools();
     this.discoveredSlashCommands = tools.map((tool) => ({
       name: `/${tool.name}`,
