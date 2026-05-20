@@ -30,12 +30,32 @@ Obsigravity does **not** use Gemini CLI/API, Vertex AI, Veo, browser recording, 
 - Obsidian desktop.
 - Node.js 20+ for development.
 - Antigravity CLI installed and authenticated.
-- `agy` available on PATH, or configured manually in plugin settings.
+- `agy` available on PATH, configured manually in plugin settings, or installed from the Obsigravity settings page.
 
 On this machine, the CLI is typically detected at:
 
 ```text
 ~/.local/bin/agy
+```
+
+## One-click Setup
+
+Open **Obsidian Settings -> Community plugins -> Obsigravity**.
+
+The settings page includes:
+
+- **Install / update AGY**: runs the official Antigravity CLI installer.
+- **Start Google Sign-In**: starts Antigravity CLI so it can open the browser-based Google OAuth flow when no saved session exists.
+- **Recheck**: verifies `agy --help` from Obsidian's environment and saves the detected CLI path.
+
+Official install commands used by the plugin:
+
+```bash
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+```
+
+```powershell
+irm https://antigravity.google/cli/install.ps1 | iex
 ```
 
 ## BRAT Installation

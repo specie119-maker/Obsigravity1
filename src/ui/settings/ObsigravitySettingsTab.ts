@@ -1,12 +1,20 @@
-import { PluginSettingTab, Setting } from 'obsidian';
+import { Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import type ObsigravityPlugin from '../../main';
 import { findAntigravityCli } from '../../core/antigravity/AntigravityCliResolver';
+import {
+  getAntigravityAuthPreview,
+  getAntigravityInstallPreview,
+  installAntigravityCli,
+  probeAntigravityCli,
+  startGoogleSignIn,
+} from '../../core/installer/AntigravityInstaller';
 import { buildProcessEnv } from '../../core/settings/env';
 import type { PermissionMode } from '../../core/types';
 
 export class ObsigravitySettingsTab extends PluginSettingTab {
   plugin: ObsigravityPlugin;
+  private setupLogEl: HTMLElement | null = null;
 
   constructor(plugin: ObsigravityPlugin) {
     super(plugin.app, plugin);
@@ -48,6 +56,38 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
           await this.plugin.saveSettings();
           this.display();
         }));
+
+    const setupCard = containerEl.createDiv({ cls: 'obsigravity-settings-card' });
+    setupCard.createEl('h3', { text: 'One-click setup' });
+    setupCard.createEl('p', {
+      text: 'Install Antigravity CLI, start Google Sign-In, then recheck detection without leaving Obsidian.',
+    });
+    setupCard.createEl('pre', {
+      cls: 'obsigravity-status-line',
+      text: [
+        getAntigravityInstallPreview(),
+        getAntigravityAuthPreview(this.plugin.settings.antigravityCliPath || detectedAntigravity || 'agy'),
+      ].join('\n'),
+    });
+
+    new Setting(setupCard)
+      .addButton((button) => button
+        .setButtonText('Install / update AGY')
+        .setCta()
+        .onClick(() => void this.installAntigravity()))
+      .addButton((button) => button
+        .setButtonText('Start Google Sign-In')
+        .onClick(() => void this.startSignIn()))
+      .addButton((button) => button
+        .setButtonText('Recheck')
+        .onClick(() => void this.recheckAntigravity()));
+
+    this.setupLogEl = setupCard.createEl('pre', {
+      cls: 'obsigravity-status-line',
+      text: detectedAntigravity
+        ? `Ready: ${detectedAntigravity}`
+        : 'Antigravity CLI is not detected yet.',
+    });
 
     new Setting(antigravityCard)
       .setName('Permission mode')
@@ -109,5 +149,73 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
           this.plugin.settings.mediaFolder = value.trim() || 'attachments/obsigravity';
           await this.plugin.saveSettings();
         }));
+  }
+
+  private appendSetupLog(line: string): void {
+    if (!this.setupLogEl) return;
+    this.setupLogEl.appendText(line);
+    this.setupLogEl.scrollTop = this.setupLogEl.scrollHeight;
+  }
+
+  private resetSetupLog(message: string): void {
+    if (!this.setupLogEl) return;
+    this.setupLogEl.setText(`${message}\n`);
+  }
+
+  private async installAntigravity(): Promise<void> {
+    this.resetSetupLog('Installing Antigravity CLI...');
+    try {
+      const detected = await installAntigravityCli(this.plugin.settings.environmentVariables, (line) => this.appendSetupLog(line));
+      if (detected) {
+        this.plugin.settings.antigravityCliPath = detected;
+        await this.plugin.saveSettings();
+      }
+      new Notice('Antigravity CLI install finished.');
+      this.display();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.appendSetupLog(`\nFAILED: ${message}\n`);
+      new Notice(`Antigravity install failed: ${message}`);
+    }
+  }
+
+  private async startSignIn(): Promise<void> {
+    this.resetSetupLog('Starting Google Sign-In through Antigravity CLI...');
+    try {
+      await startGoogleSignIn(
+        this.plugin.settings.antigravityCliPath,
+        this.plugin.settings.environmentVariables,
+        this.plugin.getVaultPath(),
+        (line) => this.appendSetupLog(line),
+      );
+      new Notice('Google Sign-In check completed.');
+      await this.recheckAntigravity(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.appendSetupLog(`\nFAILED: ${message}\n`);
+      new Notice(`Google Sign-In failed: ${message}`);
+    }
+  }
+
+  private async recheckAntigravity(showNotice = true): Promise<void> {
+    this.resetSetupLog('Rechecking Antigravity CLI...');
+    try {
+      const detected = await probeAntigravityCli(
+        this.plugin.settings.antigravityCliPath,
+        this.plugin.settings.environmentVariables,
+        (line) => this.appendSetupLog(line),
+      );
+      if (detected) {
+        this.plugin.settings.antigravityCliPath = detected;
+        await this.plugin.saveSettings();
+        this.appendSetupLog(`\nReady: ${detected}\n`);
+      }
+      if (showNotice) new Notice(detected ? 'Antigravity CLI is ready.' : 'Antigravity CLI was not found.');
+      this.display();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.appendSetupLog(`\nFAILED: ${message}\n`);
+      if (showNotice) new Notice(`Antigravity recheck failed: ${message}`);
+    }
   }
 }

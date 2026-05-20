@@ -1,0 +1,107 @@
+import { spawn } from 'child_process';
+import * as path from 'path';
+
+import { findAntigravityCli } from '../antigravity/AntigravityCliResolver';
+import { buildProcessEnv, mergePath } from '../settings/env';
+
+export type InstallLog = (line: string) => void;
+
+export function getAntigravityInstallPreview(): string {
+  if (process.platform === 'win32') {
+    return 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm https://antigravity.google/cli/install.ps1 | iex"';
+  }
+  return 'curl -fsSL https://antigravity.google/cli/install.sh | bash';
+}
+
+export function getAntigravityAuthPreview(agyPath = 'agy'): string {
+  return `${agyPath} --print-timeout 10m --print "Check Google Sign-In for Obsigravity."`;
+}
+
+export async function installAntigravityCli(envText: string, log: InstallLog): Promise<string | null> {
+  const installCommand = getAntigravityInstallPreview();
+  log(`$ ${installCommand}\n`);
+  await runShellCommand(installCommand, envText, log);
+
+  const detected = findAntigravityCli('', buildProcessEnv(envText).PATH);
+  if (detected) {
+    log(`\nDetected Antigravity CLI: ${detected}\n`);
+    return detected;
+  }
+
+  log('\nInstall finished, but agy was not detected in Obsidian PATH yet. Add ~/.local/bin to PATH if needed.\n');
+  return null;
+}
+
+export async function startGoogleSignIn(agyPath: string, envText: string, cwd: string, log: InstallLog): Promise<void> {
+  const env = buildProcessEnv(envText);
+  const detected = findAntigravityCli(agyPath, env.PATH);
+  if (!detected) {
+    throw new Error('Antigravity CLI was not found. Install it first or set the agy path.');
+  }
+
+  env.PATH = mergePath(env.PATH, [path.dirname(detected)]);
+  const args = [
+    '--print-timeout',
+    '10m',
+    '--print',
+    [
+      'Check Google Sign-In for Obsigravity.',
+      'If no saved session exists, start the browser-based Google Sign-In flow.',
+      'After authentication, reply with a concise status line.',
+    ].join(' '),
+  ];
+
+  log(`$ ${getAntigravityAuthPreview(detected)}\n`);
+  await runProcess(detected, args, env, cwd, log);
+}
+
+export async function probeAntigravityCli(agyPath: string, envText: string, log: InstallLog): Promise<string | null> {
+  const env = buildProcessEnv(envText);
+  const detected = findAntigravityCli(agyPath, env.PATH);
+  if (!detected) {
+    log('WARN Antigravity CLI not found.\n');
+    return null;
+  }
+
+  env.PATH = mergePath(env.PATH, [path.dirname(detected)]);
+  log(`$ ${detected} --help\n`);
+  await runProcess(detected, ['--help'], env, process.cwd(), log);
+  return detected;
+}
+
+function runShellCommand(command: string, envText: string, log: InstallLog): Promise<void> {
+  const shell = process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh';
+  const args = process.platform === 'win32'
+    ? ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command]
+    : ['-lc', command];
+  return runProcess(shell, args, buildProcessEnv(envText), process.cwd(), log);
+}
+
+function runProcess(
+  command: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+  log: InstallLog
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false,
+      windowsHide: false,
+    });
+
+    child.stdout.on('data', (chunk: Buffer) => log(chunk.toString()));
+    child.stderr.on('data', (chunk: Buffer) => log(chunk.toString()));
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code && code !== 0) {
+        reject(new Error(`${command} exited with code ${code}`));
+        return;
+      }
+      resolve();
+    });
+  });
+}
