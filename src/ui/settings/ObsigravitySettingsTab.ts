@@ -3,14 +3,17 @@ import { Notice, PluginSettingTab, Setting } from 'obsidian';
 import type ObsigravityPlugin from '../../main';
 import { findAntigravityCli } from '../../core/antigravity/AntigravityCliResolver';
 import {
+  importAntigravityPlugins,
   getAntigravityAuthPreview,
   getAntigravityInstallPreview,
   installAntigravityCli,
+  listAntigravityPlugins,
   probeAntigravityCli,
   startGoogleSignIn,
+  type AntigravityPluginImportSource,
 } from '../../core/installer/AntigravityInstaller';
 import { buildProcessEnv } from '../../core/settings/env';
-import type { PermissionMode } from '../../core/types';
+import type { PermissionMode, PreferredModel } from '../../core/types';
 
 export class ObsigravitySettingsTab extends PluginSettingTab {
   plugin: ObsigravityPlugin;
@@ -87,6 +90,48 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
       text: detectedAntigravity
         ? `Ready: ${detectedAntigravity}`
         : 'Antigravity CLI is not detected yet.',
+    });
+
+    new Setting(antigravityCard)
+      .setName('Model preference')
+      .setDesc('Stored as an Obsigravity preference and passed into AGY prompts. AGY still owns the actual model switch.')
+      .addDropdown((dropdown) => dropdown
+        .addOption('default', 'AGY default')
+        .addOption('gemini-3.1-pro-high', 'Gemini 3.1 Pro High')
+        .addOption('gemini-3.1-pro-low', 'Gemini 3.1 Pro Low')
+        .addOption('gemini-3-flash', 'Gemini 3 Flash')
+        .addOption('claude-sonnet-4.6-thinking', 'Claude Sonnet 4.6 Thinking')
+        .addOption('claude-opus-4.6-thinking', 'Claude Opus 4.6 Thinking')
+        .addOption('gpt-oss-120b', 'GPT-OSS-120b')
+        .setValue(this.plugin.settings.preferredModel)
+        .onChange(async (value) => {
+          this.plugin.settings.preferredModel = value as PreferredModel;
+          await this.plugin.saveSettings();
+        }));
+
+    const pluginCard = containerEl.createDiv({ cls: 'obsigravity-settings-card' });
+    pluginCard.createEl('h3', { text: 'Skills and slash tools' });
+    pluginCard.createEl('p', {
+      text: 'Import Claude Code or Gemini plugin packs into Antigravity with agy plugin import, then use their skills and slash-command surfaces from Obsigravity prompts.',
+    });
+    new Setting(pluginCard)
+      .addButton((button) => button
+        .setButtonText('Import Claude')
+        .setCta()
+        .onClick(() => void this.importPlugins('claude')))
+      .addButton((button) => button
+        .setButtonText('Import Gemini')
+        .onClick(() => void this.importPlugins('gemini')))
+      .addButton((button) => button
+        .setButtonText('Import all')
+        .onClick(() => void this.importPlugins('all')))
+      .addButton((button) => button
+        .setButtonText('List plugins')
+        .onClick(() => void this.listPlugins()));
+
+    pluginCard.createEl('p', {
+      cls: 'obsigravity-settings-hint',
+      text: 'Obsigravity does not copy secrets. Imports are delegated to the local AGY plugin manager.',
     });
 
     new Setting(antigravityCard)
@@ -216,6 +261,41 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
       const message = error instanceof Error ? error.message : String(error);
       this.appendSetupLog(`\nFAILED: ${message}\n`);
       if (showNotice) new Notice(`Antigravity recheck failed: ${message}`);
+    }
+  }
+
+  private async importPlugins(source: AntigravityPluginImportSource): Promise<void> {
+    this.resetSetupLog(`Importing ${source} Antigravity plugins...`);
+    try {
+      await importAntigravityPlugins(
+        source,
+        this.plugin.settings.antigravityCliPath,
+        this.plugin.settings.environmentVariables,
+        this.plugin.getVaultPath(),
+        (line) => this.appendSetupLog(line),
+      );
+      new Notice(`Antigravity plugin import finished: ${source}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.appendSetupLog(`\nFAILED: ${message}\n`);
+      new Notice(`Antigravity plugin import failed: ${message}`);
+    }
+  }
+
+  private async listPlugins(): Promise<void> {
+    this.resetSetupLog('Listing Antigravity plugins...');
+    try {
+      await listAntigravityPlugins(
+        this.plugin.settings.antigravityCliPath,
+        this.plugin.settings.environmentVariables,
+        this.plugin.getVaultPath(),
+        (line) => this.appendSetupLog(line),
+      );
+      new Notice('Antigravity plugin list completed.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.appendSetupLog(`\nFAILED: ${message}\n`);
+      new Notice(`Antigravity plugin list failed: ${message}`);
     }
   }
 }

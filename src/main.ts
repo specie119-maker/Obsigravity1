@@ -4,9 +4,8 @@ import { AntigravityProvider } from './core/agent/AntigravityProvider';
 import { findAntigravityCli } from './core/antigravity/AntigravityCliResolver';
 import { draftVisualPrompt, generateVisualAsset } from './core/images/VisualAssetService';
 import { buildImagePrompt } from './core/images/ImagePromptBuilder';
-import { MemoryMapService } from './core/memory/MemoryMapService';
 import { buildProcessEnv } from './core/settings/env';
-import type { MemoryMapResult, ObsigravitySettings } from './core/types';
+import type { ObsigravitySettings } from './core/types';
 import { DEFAULT_SETTINGS } from './core/types';
 import { ObsigravityView, VIEW_TYPE_OBSIGRAVITY } from './ui/ObsigravityView';
 import { ImageGenerationModal } from './ui/modals/ImageGenerationModal';
@@ -25,14 +24,12 @@ interface ActiveNoteContext {
 export default class ObsigravityPlugin extends Plugin {
   settings: ObsigravitySettings;
   agent: AntigravityProvider;
-  memoryMap: MemoryMapService;
   private lastActiveMarkdownFile: TFile | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
     await this.autofillAntigravityCliPath();
     this.agent = new AntigravityProvider(() => this.settings);
-    this.memoryMap = new MemoryMapService(this.app);
 
     this.registerView(VIEW_TYPE_OBSIGRAVITY, (leaf) => new ObsigravityView(leaf, this));
 
@@ -71,25 +68,6 @@ export default class ObsigravityPlugin extends Plugin {
       },
     });
 
-    this.addCommand({
-      id: 'build-memory-map',
-      name: 'Build Memory Map',
-      callback: () => void this.buildMemoryMap(),
-    });
-
-    this.addCommand({
-      id: 'find-related-notes',
-      name: 'Find related notes for current note',
-      checkCallback: (checking: boolean) => {
-        const activeFile = this.getActiveMarkdownFile();
-        if (!activeFile) return false;
-        if (checking) return true;
-
-        void this.findRelatedNotes();
-        return true;
-      },
-    });
-
     this.addSettingTab(new ObsigravitySettingsTab(this));
   }
 
@@ -103,6 +81,7 @@ export default class ObsigravityPlugin extends Plugin {
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...data,
+      preferredModel: typeof data?.preferredModel === 'string' ? data.preferredModel : DEFAULT_SETTINGS.preferredModel,
       pinnedNotePaths: Array.isArray(data?.pinnedNotePaths) ? data.pinnedNotePaths : DEFAULT_SETTINGS.pinnedNotePaths,
       excludedNotePaths: Array.isArray(data?.excludedNotePaths) ? data.excludedNotePaths : DEFAULT_SETTINGS.excludedNotePaths,
       omx: {
@@ -233,41 +212,6 @@ export default class ObsigravityPlugin extends Plugin {
     await this.activateView();
     this.refreshOpenViews();
     new Notice(`Attached: ${activeFile.name}`);
-  }
-
-  async buildMemoryMap(): Promise<void> {
-    new Notice('Building Obsigravity Memory Map...');
-    try {
-      const index = await this.memoryMap.build();
-      this.refreshOpenViews();
-      new Notice(`Memory Map ready: ${index.entries.length} notes indexed.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      new Notice(`Memory Map failed: ${message}`);
-    }
-  }
-
-  async getMemoryMapStatus(): Promise<{ built: boolean; count: number; builtAt: number | null }> {
-    return this.memoryMap.getStatus();
-  }
-
-  async findRelatedNotes(limit = 8): Promise<MemoryMapResult[]> {
-    const activeFile = this.getActiveMarkdownFile();
-    if (!activeFile) {
-      new Notice('Open a markdown note before finding related notes.');
-      return [];
-    }
-
-    try {
-      const results = await this.memoryMap.findRelated(activeFile, limit);
-      this.refreshOpenViews();
-      if (results.length === 0) new Notice('No related notes found.');
-      return results;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      new Notice(`Find Context failed: ${message}`);
-      return [];
-    }
   }
 
   refreshOpenViews(): void {

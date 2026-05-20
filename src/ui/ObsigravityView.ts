@@ -1,7 +1,7 @@
 import { ItemView, MarkdownRenderer, Notice, setIcon, type TFile, type WorkspaceLeaf } from 'obsidian';
 
 import type ObsigravityPlugin from '../main';
-import type { ConversationMessage, ConversationSession, MemoryMapResult, PermissionMode } from '../core/types';
+import type { ConversationMessage, ConversationSession, PermissionMode, PreferredModel } from '../core/types';
 
 export const VIEW_TYPE_OBSIGRAVITY = 'obsigravity-view';
 
@@ -13,17 +13,21 @@ const OBSIGRAVITY_LOGO = {
 const ANTIGRAVITY_SLASH_COMMANDS = [
   { name: '/help', hint: 'Show Antigravity help', description: 'Ask Antigravity CLI for available commands and usage.' },
   { name: '/status', hint: 'Show agent status', description: 'Ask Antigravity to summarize workspace, permissions, and active note context.' },
+  { name: '/model', hint: 'Model selector', description: 'Open or request the Antigravity model selector.' },
+  { name: '/skills', hint: 'Browse skills', description: 'Browse local and imported Antigravity skills.' },
+  { name: '/mcp', hint: 'MCP manager', description: 'Open or request Antigravity MCP configuration.' },
+  { name: '/agents', hint: 'Subagents', description: 'Open or request Antigravity subagent controls.' },
+  { name: '/permissions', hint: 'Permissions', description: 'Select or inspect Antigravity autonomy level.' },
+  { name: '/config', hint: 'Settings', description: 'Open or inspect Antigravity CLI settings.' },
   { name: '/probe', hint: 'Probe media support', description: 'Check native image, video, and TTS capability honesty.' },
   { name: '/image', hint: 'Generate image', description: 'Generate an Antigravity-native image from the active note.' },
   { name: '/diff', hint: 'Review vault changes', description: 'Ask Antigravity to summarize local file changes.' },
-  { name: '/memory', hint: 'Context notes', description: 'Ask Antigravity to use active and pinned note context.' },
 ];
 
 export class ObsigravityView extends ItemView {
   private plugin: ObsigravityPlugin;
   private messagesEl: HTMLElement | null = null;
   private inputEl: HTMLTextAreaElement | null = null;
-  private memoryMapEl: HTMLElement | null = null;
   private fileIndicatorEl: HTMLElement | null = null;
   private selectionIndicatorEl: HTMLElement | null = null;
   private slashDropdownEl: HTMLElement | null = null;
@@ -31,10 +35,6 @@ export class ObsigravityView extends ItemView {
   private welcomeEl: HTMLElement | null = null;
   private messages: ConversationMessage[] = [];
   private currentConversationId: string | null = null;
-  private relatedNotes: MemoryMapResult[] = [];
-  private hiddenRelatedPaths = new Set<string>();
-  private memoryMapRenderToken = 0;
-  private isMemoryMapExpanded = true;
   private isRunning = false;
   private selectedSlashCommandIndex = 0;
 
@@ -70,14 +70,8 @@ export class ObsigravityView extends ItemView {
     this.buildInputArea(inputContainerEl);
 
     this.registerEvent(this.app.workspace.on('active-leaf-change', () => this.renderFileChips()));
-    this.registerEvent(this.app.workspace.on('file-open', () => {
-      this.relatedNotes = [];
-      this.hiddenRelatedPaths.clear();
-      this.renderMemoryMapPanel();
-      this.renderFileChips();
-    }));
+    this.registerEvent(this.app.workspace.on('file-open', () => this.renderFileChips()));
     this.registerDomEvent(document, 'click', () => this.hideHistoryMenu());
-    void this.renderMemoryMapPanel();
     this.renderFileChips();
   }
 
@@ -86,7 +80,6 @@ export class ObsigravityView extends ItemView {
   }
 
   refreshContextChips(): void {
-    void this.renderMemoryMapPanel();
     this.renderFileChips();
   }
 
@@ -136,8 +129,6 @@ export class ObsigravityView extends ItemView {
     this.selectionIndicatorEl = inputWrapper.createDiv({ cls: 'oc-selection-indicator' });
     this.selectionIndicatorEl.style.display = 'none';
 
-    this.memoryMapEl = inputWrapper.createDiv({ cls: 'oc-memory-map-panel' });
-
     this.fileIndicatorEl = inputWrapper.createDiv({ cls: 'oc-file-indicator' });
 
     this.inputEl = inputWrapper.createEl('textarea', {
@@ -166,11 +157,56 @@ export class ObsigravityView extends ItemView {
     this.slashDropdownEl.addEventListener('wheel', (event) => event.stopPropagation());
 
     const toolbar = inputWrapper.createDiv({ cls: 'oc-input-toolbar' });
+    this.buildModelSelector(toolbar);
     this.buildPermissionToggle(toolbar);
 
     const sendBtn = toolbar.createDiv({ cls: 'oc-header-btn oc-send-btn', attr: { 'aria-label': 'Send message' } });
     setIcon(sendBtn, 'send');
     sendBtn.addEventListener('click', () => void this.submit());
+  }
+
+  private buildModelSelector(parent: HTMLElement): void {
+    const selector = parent.createDiv({ cls: 'oc-model-selector' });
+    const button = selector.createDiv({ cls: 'oc-model-btn' });
+    const label = button.createSpan({ cls: 'oc-model-label', text: this.modelLabel(this.plugin.settings.preferredModel) });
+
+    const dropdown = selector.createDiv({ cls: 'oc-model-dropdown' });
+    const models: Array<{ value: PreferredModel; label: string; desc: string }> = [
+      { value: 'default', label: 'Default', desc: 'Use AGY current default' },
+      { value: 'gemini-3.1-pro-high', label: 'Gemini 3.1 Pro High', desc: 'Highest Gemini reasoning' },
+      { value: 'gemini-3.1-pro-low', label: 'Gemini 3.1 Pro Low', desc: 'Lower-latency Gemini Pro' },
+      { value: 'gemini-3-flash', label: 'Gemini 3 Flash', desc: 'Fast general work' },
+      { value: 'claude-sonnet-4.6-thinking', label: 'Claude Sonnet 4.6', desc: 'Thinking model' },
+      { value: 'claude-opus-4.6-thinking', label: 'Claude Opus 4.6', desc: 'Thinking model' },
+      { value: 'gpt-oss-120b', label: 'GPT-OSS-120b', desc: 'Open model lane' },
+    ];
+
+    for (const model of models) {
+      const option = dropdown.createDiv({ cls: 'oc-model-option' });
+      if (model.value === this.plugin.settings.preferredModel) option.addClass('selected');
+      option.createSpan({ text: model.label });
+      option.createDiv({ cls: 'oc-model-desc', text: model.desc });
+      option.addEventListener('click', async () => {
+        this.plugin.settings.preferredModel = model.value;
+        await this.plugin.saveSettings();
+        label.setText(model.label);
+        for (const item of Array.from(dropdown.children)) item.removeClass('selected');
+        option.addClass('selected');
+      });
+    }
+  }
+
+  private modelLabel(model: PreferredModel): string {
+    const labels: Record<PreferredModel, string> = {
+      default: 'Default',
+      'gemini-3.1-pro-high': 'Gemini 3.1 Pro High',
+      'gemini-3.1-pro-low': 'Gemini 3.1 Pro Low',
+      'gemini-3-flash': 'Gemini 3 Flash',
+      'claude-sonnet-4.6-thinking': 'Claude Sonnet 4.6',
+      'claude-opus-4.6-thinking': 'Claude Opus 4.6',
+      'gpt-oss-120b': 'GPT-OSS-120b',
+    };
+    return labels[model];
   }
 
   private buildPermissionToggle(parent: HTMLElement): void {
@@ -201,112 +237,6 @@ export class ObsigravityView extends ItemView {
     if (!this.welcomeEl) return;
     this.welcomeEl.empty();
     this.welcomeEl.createDiv({ cls: 'oc-welcome-greeting', text: 'How can I help you today?' });
-  }
-
-  private async renderMemoryMapPanel(): Promise<void> {
-    if (!this.memoryMapEl) return;
-    const renderToken = ++this.memoryMapRenderToken;
-
-    const status = await this.plugin.getMemoryMapStatus();
-    if (renderToken !== this.memoryMapRenderToken || !this.memoryMapEl) return;
-
-    this.memoryMapEl.empty();
-    this.memoryMapEl.toggleClass('is-collapsed', !this.isMemoryMapExpanded);
-    const header = this.memoryMapEl.createDiv({ cls: 'oc-memory-map-header' });
-    const title = header.createDiv({ cls: 'oc-memory-map-title' });
-    title.setAttribute('role', 'button');
-    title.setAttribute('aria-expanded', String(this.isMemoryMapExpanded));
-    title.addEventListener('click', async () => {
-      this.isMemoryMapExpanded = !this.isMemoryMapExpanded;
-      await this.renderMemoryMapPanel();
-    });
-    setIcon(title.createSpan({ cls: 'oc-memory-map-toggle' }), this.isMemoryMapExpanded ? 'chevron-down' : 'chevron-right');
-    setIcon(title.createSpan({ cls: 'oc-memory-map-icon' }), 'network');
-    title.createSpan({ text: status.built ? `Memory Map · ${status.count} notes` : 'Memory Map not built' });
-
-    const actions = header.createDiv({ cls: 'oc-memory-map-actions' });
-    if (this.relatedNotes.length > 0) {
-      const clearBtn = actions.createEl('button', { cls: 'oc-memory-map-btn', text: 'Clear' });
-      clearBtn.addEventListener('click', async () => {
-        this.relatedNotes = [];
-        this.hiddenRelatedPaths.clear();
-        await this.renderMemoryMapPanel();
-      });
-    }
-
-    const buildBtn = actions.createEl('button', { cls: 'oc-memory-map-btn', text: status.built ? 'Rebuild' : 'Build Memory Map' });
-    buildBtn.addEventListener('click', async () => {
-      buildBtn.setText('Building...');
-      await this.plugin.buildMemoryMap();
-      await this.renderMemoryMapPanel();
-    });
-
-    const findBtn = actions.createEl('button', { cls: 'oc-memory-map-btn oc-memory-map-primary', text: 'Find Context' });
-    findBtn.disabled = !Boolean(this.plugin.getActiveMarkdownFile());
-    findBtn.addEventListener('click', async () => {
-      findBtn.setText('Finding...');
-      this.relatedNotes = await this.plugin.findRelatedNotes();
-      this.hiddenRelatedPaths.clear();
-      this.isMemoryMapExpanded = true;
-      await this.renderMemoryMapPanel();
-    });
-
-    if (!this.isMemoryMapExpanded) return;
-
-    const visibleResults = this.relatedNotes.filter((result) => !this.hiddenRelatedPaths.has(result.path));
-    if (visibleResults.length === 0) {
-      const hint = this.memoryMapEl.createDiv({ cls: 'oc-memory-map-hint' });
-      hint.setText(status.built ? 'Click Find Context to recommend related notes.' : 'Build once, then find related notes from this vault.');
-      return;
-    }
-
-    const list = this.memoryMapEl.createDiv({ cls: 'oc-memory-map-results' });
-    for (const result of visibleResults) {
-      this.createRelatedNoteChip(list, result);
-    }
-  }
-
-  private createRelatedNoteChip(parent: HTMLElement, result: MemoryMapResult): void {
-    const chip = parent.createDiv({ cls: 'oc-memory-chip' });
-    chip.addEventListener('click', () => void this.openNote(result.path));
-
-    const name = chip.createSpan({ cls: 'oc-memory-chip-name', text: result.title });
-    name.setAttribute('title', result.path);
-    chip.createSpan({ cls: 'oc-memory-chip-reason', text: result.reasons[0] || `score ${result.score}` });
-
-    const tooltip = chip.createDiv({ cls: 'oc-memory-chip-tooltip' });
-    tooltip.createDiv({ cls: 'oc-memory-tooltip-title', text: result.title });
-    tooltip.createDiv({ cls: 'oc-memory-tooltip-path', text: result.path });
-    const reasons = tooltip.createDiv({ cls: 'oc-memory-tooltip-reasons' });
-    if (result.reasons.length > 0) {
-      for (const reason of result.reasons) {
-        reasons.createDiv({ cls: 'oc-memory-tooltip-reason', text: reason });
-      }
-    } else {
-      reasons.createDiv({ cls: 'oc-memory-tooltip-reason', text: '규칙 기반 점수로 추천됨' });
-    }
-    tooltip.createDiv({ cls: 'oc-memory-tooltip-score', text: `Relevance score ${result.score}` });
-
-    const add = chip.createSpan({ cls: 'oc-memory-chip-action' });
-    setIcon(add, 'plus');
-    add.setAttribute('aria-label', 'Add note to Obsigravity context');
-    add.setAttribute('title', 'Add to context');
-    add.addEventListener('click', async (event) => {
-      event.stopPropagation();
-      await this.plugin.pinNote(result.path);
-      this.renderFileChips();
-      new Notice(`Added context: ${result.title}`);
-    });
-
-    const hide = chip.createSpan({ cls: 'oc-memory-chip-action' });
-    setIcon(hide, 'x');
-    hide.setAttribute('aria-label', 'Hide recommendation');
-    hide.setAttribute('title', 'Hide this recommendation');
-    hide.addEventListener('click', async (event) => {
-      event.stopPropagation();
-      this.hiddenRelatedPaths.add(result.path);
-      await this.renderMemoryMapPanel();
-    });
   }
 
   private renderFileChips(): void {

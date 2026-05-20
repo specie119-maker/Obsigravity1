@@ -1,4 +1,12 @@
 export type PermissionMode = 'review' | 'auto' | 'yolo';
+export type PreferredModel =
+  | 'default'
+  | 'gemini-3.1-pro-high'
+  | 'gemini-3.1-pro-low'
+  | 'gemini-3-flash'
+  | 'claude-sonnet-4.6-thinking'
+  | 'claude-opus-4.6-thinking'
+  | 'gpt-oss-120b';
 export type ImageMode =
   | 'infographic'
   | 'poster'
@@ -12,34 +20,9 @@ export type ImageMode =
   | 'ui';
 export type VisualOutputType = 'png' | 'svg';
 
-export interface MemoryMapEntry {
-  path: string;
-  title: string;
-  folder: string;
-  tags: string[];
-  links: string[];
-  headings: string[];
-  keywords: string[];
-  terms: Record<string, number>;
-  length: number;
-  mtime: number;
-}
-
-export interface MemoryMapIndex {
-  version: 2;
-  builtAt: number;
-  entries: MemoryMapEntry[];
-}
-
-export interface MemoryMapResult {
-  path: string;
-  title: string;
-  score: number;
-  reasons: string[];
-}
-
 export interface ObsigravitySettings {
   antigravityCliPath: string;
+  preferredModel: PreferredModel;
   permissionMode: PermissionMode;
   autoIncludeActiveNote: boolean;
   pinnedNotePaths: string[];
@@ -99,6 +82,7 @@ export interface AgentProvider {
 
 export const DEFAULT_SETTINGS: ObsigravitySettings = {
   antigravityCliPath: '',
+  preferredModel: 'default',
   permissionMode: 'review',
   autoIncludeActiveNote: true,
   pinnedNotePaths: [],

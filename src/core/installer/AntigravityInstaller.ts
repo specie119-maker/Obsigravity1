@@ -5,6 +5,7 @@ import { findAntigravityCli } from '../antigravity/AntigravityCliResolver';
 import { buildProcessEnv, mergePath } from '../settings/env';
 
 export type InstallLog = (line: string) => void;
+export type AntigravityPluginImportSource = 'claude' | 'gemini' | 'all';
 
 export function getAntigravityInstallPreview(): string {
   if (process.platform === 'win32') {
@@ -66,6 +67,51 @@ export async function probeAntigravityCli(agyPath: string, envText: string, log:
   env.PATH = mergePath(env.PATH, [path.dirname(detected)]);
   log(`$ ${detected} --help\n`);
   await runProcess(detected, ['--help'], env, process.cwd(), log);
+  return detected;
+}
+
+export async function importAntigravityPlugins(
+  source: AntigravityPluginImportSource,
+  agyPath: string,
+  envText: string,
+  cwd: string,
+  log: InstallLog
+): Promise<void> {
+  const detected = resolveAntigravityCli(agyPath, envText);
+  const env = buildProcessEnv(envText);
+  env.PATH = mergePath(env.PATH, [path.dirname(detected)]);
+  const sources: Array<'claude' | 'gemini'> = source === 'all' ? ['claude', 'gemini'] : [source];
+
+  for (const item of sources) {
+    log(`$ ${detected} plugin import ${item}\n`);
+    await runProcess(detected, ['plugin', 'import', item], env, cwd, log);
+    log('\n');
+  }
+
+  log(`$ ${detected} plugin list\n`);
+  await runProcess(detected, ['plugin', 'list'], env, cwd, log);
+}
+
+export async function listAntigravityPlugins(
+  agyPath: string,
+  envText: string,
+  cwd: string,
+  log: InstallLog
+): Promise<void> {
+  const detected = resolveAntigravityCli(agyPath, envText);
+  const env = buildProcessEnv(envText);
+  env.PATH = mergePath(env.PATH, [path.dirname(detected)]);
+
+  log(`$ ${detected} plugin list\n`);
+  await runProcess(detected, ['plugin', 'list'], env, cwd, log);
+}
+
+function resolveAntigravityCli(agyPath: string, envText: string): string {
+  const env = buildProcessEnv(envText);
+  const detected = findAntigravityCli(agyPath, env.PATH);
+  if (!detected) {
+    throw new Error('Antigravity CLI was not found. Install it first or set the agy path.');
+  }
   return detected;
 }
 

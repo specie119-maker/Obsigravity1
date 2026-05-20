@@ -73,6 +73,11 @@ export class AntigravityProvider implements AgentProvider {
     parts.push('Be capability-honest: use native Antigravity tools only. Do not fake unsupported video or TTS outputs.');
     parts.push('Lean into Antigravity strengths: agent runtime planning, local file workflow, plugin/extensibility awareness, and clear verification.');
 
+    const preferredModel = this.settings().preferredModel;
+    if (preferredModel !== 'default') {
+      parts.push(`Preferred Antigravity model: ${preferredModel}. Use this model if the AGY runtime supports model selection in the current session; otherwise continue with the current AGY default.`);
+    }
+
     if (input.activeNotePath && input.activeNoteContent) {
       parts.push(`\n<active_obsidian_note path="${input.activeNotePath}">\n${input.activeNoteContent}\n</active_obsidian_note>`);
     }
