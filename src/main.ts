@@ -374,6 +374,7 @@ export default class ObsigravityPlugin extends Plugin {
     try {
       for await (const event of this.agent.query({
         cwd: this.getVaultPath(),
+        allowWorkspaceAccess: false,
         prompt: [
           'Probe native Antigravity media capabilities for Obsigravity.',
           'Report whether native raster image generation, native generative video, and native TTS/audio narration are available.',

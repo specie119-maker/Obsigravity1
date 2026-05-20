@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'child_process';
+import * as os from 'os';
 import * as path from 'path';
 
 import { findAntigravityCli } from '../antigravity/AntigravityCliResolver';
@@ -30,14 +31,10 @@ export class AntigravityProvider implements AgentProvider {
 
     env.PATH = mergePath(env.PATH, [path.dirname(agyPath)]);
     const prompt = this.buildPrompt(input);
-    const args = [
-      '--add-dir',
-      input.cwd,
-      '--print-timeout',
-      '5m',
-      '--print',
-      prompt,
-    ];
+    const runCwd = input.allowWorkspaceAccess ? input.cwd : os.homedir();
+    const args = input.allowWorkspaceAccess
+      ? ['--add-dir', input.cwd, '--print-timeout', '5m', '--print', prompt]
+      : ['--print-timeout', '5m', '--print', prompt];
 
     if (settings.permissionMode === 'yolo' || settings.permissionMode === 'auto') {
       args.unshift('--dangerously-skip-permissions');
@@ -45,7 +42,7 @@ export class AntigravityProvider implements AgentProvider {
       args.unshift('--sandbox');
     }
 
-    yield* this.runProcess(agyPath, args, env, input.cwd);
+    yield* this.runProcess(agyPath, args, env, runCwd);
     yield { type: 'done' };
   }
 
@@ -70,6 +67,7 @@ export class AntigravityProvider implements AgentProvider {
     const parts: string[] = [];
     parts.push('You are Antigravity CLI running from an Obsidian plugin workflow named Obsigravity.');
     parts.push('Use active note context only when the user asks to analyze, transform, generate from, or otherwise work with the note. For greetings, small talk, or general questions, answer the user directly and briefly without analyzing the active note.');
+    parts.push('The active Obsidian note is provided as text context, not as permission to search the vault. Do not grep, list, scan, or recursively inspect the vault unless the user explicitly asks for vault search.');
     parts.push('Be capability-honest: use native Antigravity tools only. Do not fake unsupported video or TTS outputs.');
     parts.push('Lean into Antigravity strengths: agent runtime planning, local file workflow, plugin/extensibility awareness, and clear verification.');
 

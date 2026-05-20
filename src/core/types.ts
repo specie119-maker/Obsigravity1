@@ -65,6 +65,7 @@ export interface ConversationSession {
 export interface AgentQuery {
   prompt: string;
   cwd: string;
+  allowWorkspaceAccess?: boolean;
   activeNotePath?: string;
   activeNoteContent?: string;
   selectedText?: string;

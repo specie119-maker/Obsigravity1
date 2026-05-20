@@ -70,6 +70,7 @@ export async function generateVisualAsset(request: GenerateVisualAssetRequest): 
   for await (const event of request.agent.query({
     prompt,
     cwd: request.vaultPath,
+    allowWorkspaceAccess: true,
     activeNotePath: request.file.path,
     activeNoteContent: request.noteContent,
     selectedText: request.selection,
@@ -104,6 +105,7 @@ export async function draftVisualPrompt(request: GenerateVisualAssetRequest): Pr
   for await (const event of request.agent.query({
     prompt,
     cwd: request.vaultPath,
+    allowWorkspaceAccess: false,
     activeNotePath: request.file.path,
     activeNoteContent: request.noteContent,
     selectedText: request.selection,
