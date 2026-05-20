@@ -2,6 +2,7 @@ import { Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import type ObsigravityPlugin from '../../main';
 import { findAntigravityCli } from '../../core/antigravity/AntigravityCliResolver';
+import { detectExternalClis, EXTERNAL_CLI_DEFINITIONS, type ExternalCliId } from '../../core/cli/ExternalCliResolver';
 import {
   importAntigravityPlugins,
   getAntigravityAuthPreview,
@@ -133,6 +134,45 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
       cls: 'obsigravity-settings-hint',
       text: 'Obsigravity does not copy secrets. Imports are delegated to the local AGY plugin manager.',
     });
+
+    const externalCliCard = containerEl.createDiv({ cls: 'obsigravity-settings-card' });
+    externalCliCard.createEl('h3', { text: 'External CLI connectors' });
+    externalCliCard.createEl('p', {
+      text: 'Obsigravity can detect optional local CLIs and later route slash-command tasks to them. Missing CLIs stay disabled instead of blocking the plugin.',
+    });
+    const detectedExternal = detectExternalClis(
+      this.plugin.settings.externalCliPaths,
+      buildProcessEnv(this.plugin.settings.environmentVariables).PATH,
+    );
+
+    for (const definition of EXTERNAL_CLI_DEFINITIONS) {
+      const detected = detectedExternal[definition.id];
+      new Setting(externalCliCard)
+        .setName(definition.name)
+        .setDesc(detected ? `Detected: ${detected}` : 'Not detected. Leave empty unless you installed this CLI.')
+        .addText((text) => text
+          .setPlaceholder(definition.commandNames[0])
+          .setValue(this.plugin.settings.externalCliPaths[definition.id])
+          .onChange(async (value) => {
+            this.plugin.settings.externalCliPaths[definition.id] = value.trim();
+            await this.plugin.saveSettings();
+          }))
+        .addButton((button) => button
+          .setButtonText('Use detected')
+          .setDisabled(!detected)
+          .onClick(async () => {
+            if (!detected) return;
+            this.plugin.settings.externalCliPaths[definition.id] = detected;
+            await this.plugin.saveSettings();
+            this.display();
+          }));
+    }
+
+    new Setting(externalCliCard)
+      .addButton((button) => button
+        .setButtonText('Auto-detect all')
+        .setCta()
+        .onClick(() => void this.autodetectExternalClis()));
 
     new Setting(antigravityCard)
       .setName('Permission mode')
@@ -297,5 +337,21 @@ export class ObsigravitySettingsTab extends PluginSettingTab {
       this.appendSetupLog(`\nFAILED: ${message}\n`);
       new Notice(`Antigravity plugin list failed: ${message}`);
     }
+  }
+
+  private async autodetectExternalClis(): Promise<void> {
+    await this.plugin.autodetectExternalClis();
+    const detected = detectExternalClis(
+      this.plugin.settings.externalCliPaths,
+      buildProcessEnv(this.plugin.settings.environmentVariables).PATH,
+    );
+    const found = (Object.entries(detected) as Array<[ExternalCliId, string | null]>)
+      .filter(([, cliPath]) => Boolean(cliPath))
+      .map(([id, cliPath]) => `${id}: ${cliPath}`)
+      .join('\n');
+
+    new Notice(found ? 'External CLI detection completed.' : 'No external CLIs detected.');
+    this.display();
+    this.resetSetupLog(found ? `Detected external CLIs:\n${found}` : 'No external CLIs detected.');
   }
 }

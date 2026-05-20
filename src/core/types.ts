@@ -22,6 +22,11 @@ export type VisualOutputType = 'png' | 'svg';
 
 export interface ObsigravitySettings {
   antigravityCliPath: string;
+  externalCliPaths: {
+    claude: string;
+    codex: string;
+    grok: string;
+  };
   preferredModel: PreferredModel;
   permissionMode: PermissionMode;
   autoIncludeActiveNote: boolean;
@@ -82,6 +87,11 @@ export interface AgentProvider {
 
 export const DEFAULT_SETTINGS: ObsigravitySettings = {
   antigravityCliPath: '',
+  externalCliPaths: {
+    claude: '',
+    codex: '',
+    grok: '',
+  },
   preferredModel: 'default',
   permissionMode: 'review',
   autoIncludeActiveNote: true,

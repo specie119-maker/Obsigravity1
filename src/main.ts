@@ -2,6 +2,7 @@ import { MarkdownView, Notice, Plugin, type TFile } from 'obsidian';
 
 import { AntigravityProvider } from './core/agent/AntigravityProvider';
 import { findAntigravityCli } from './core/antigravity/AntigravityCliResolver';
+import { detectExternalClis } from './core/cli/ExternalCliResolver';
 import { draftVisualPrompt, generateVisualAsset } from './core/images/VisualAssetService';
 import { buildImagePrompt } from './core/images/ImagePromptBuilder';
 import { buildProcessEnv } from './core/settings/env';
@@ -81,6 +82,10 @@ export default class ObsigravityPlugin extends Plugin {
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...data,
+      externalCliPaths: {
+        ...DEFAULT_SETTINGS.externalCliPaths,
+        ...data?.externalCliPaths,
+      },
       preferredModel: typeof data?.preferredModel === 'string' ? data.preferredModel : DEFAULT_SETTINGS.preferredModel,
       pinnedNotePaths: Array.isArray(data?.pinnedNotePaths) ? data.pinnedNotePaths : DEFAULT_SETTINGS.pinnedNotePaths,
       excludedNotePaths: Array.isArray(data?.excludedNotePaths) ? data.excludedNotePaths : DEFAULT_SETTINGS.excludedNotePaths,
@@ -103,11 +108,41 @@ export default class ObsigravityPlugin extends Plugin {
   }
 
   private async autofillAntigravityCliPath(): Promise<void> {
-    if (this.settings.antigravityCliPath.trim()) return;
-    const detected = findAntigravityCli('', buildProcessEnv(this.settings.environmentVariables).PATH);
-    if (!detected) return;
-    this.settings.antigravityCliPath = detected;
-    await this.saveSettings();
+    let changed = false;
+    const envPath = buildProcessEnv(this.settings.environmentVariables).PATH;
+
+    if (!this.settings.antigravityCliPath.trim()) {
+      const detected = findAntigravityCli('', envPath);
+      if (detected) {
+        this.settings.antigravityCliPath = detected;
+        changed = true;
+      }
+    }
+
+    const detectedExternal = detectExternalClis(this.settings.externalCliPaths, envPath);
+    for (const id of ['claude', 'codex', 'grok'] as const) {
+      if (!this.settings.externalCliPaths[id].trim() && detectedExternal[id]) {
+        this.settings.externalCliPaths[id] = detectedExternal[id] || '';
+        changed = true;
+      }
+    }
+
+    if (changed) await this.saveSettings();
+  }
+
+  async autodetectExternalClis(): Promise<void> {
+    const envPath = buildProcessEnv(this.settings.environmentVariables).PATH;
+    const detectedExternal = detectExternalClis(this.settings.externalCliPaths, envPath);
+    let changed = false;
+
+    for (const id of ['claude', 'codex', 'grok'] as const) {
+      if (detectedExternal[id] && this.settings.externalCliPaths[id] !== detectedExternal[id]) {
+        this.settings.externalCliPaths[id] = detectedExternal[id] || '';
+        changed = true;
+      }
+    }
+
+    if (changed) await this.saveSettings();
   }
 
   async activateView(): Promise<void> {
