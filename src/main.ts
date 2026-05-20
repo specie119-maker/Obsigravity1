@@ -2,6 +2,7 @@ import { MarkdownView, Notice, Plugin, type TFile } from 'obsidian';
 
 import { AntigravityProvider } from './core/agent/AntigravityProvider';
 import { findAntigravityCli } from './core/antigravity/AntigravityCliResolver';
+import { discoverClaudeTools } from './core/claude/ClaudeToolDiscovery';
 import { detectExternalClis } from './core/cli/ExternalCliResolver';
 import { draftVisualPrompt, generateVisualAsset } from './core/images/VisualAssetService';
 import { buildImagePrompt } from './core/images/ImagePromptBuilder';
@@ -143,6 +144,10 @@ export default class ObsigravityPlugin extends Plugin {
     }
 
     if (changed) await this.saveSettings();
+  }
+
+  getClaudeTools(): ReturnType<typeof discoverClaudeTools> {
+    return discoverClaudeTools();
   }
 
   async activateView(): Promise<void> {

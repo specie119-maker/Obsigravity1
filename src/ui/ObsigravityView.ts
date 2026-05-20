@@ -10,7 +10,13 @@ const OBSIGRAVITY_LOGO = {
   path: 'M12 2.8a4.2 4.2 0 0 1 3.64 2.1 4.2 4.2 0 0 1 5.56 5.56A4.2 4.2 0 0 1 19.1 14.1a4.2 4.2 0 0 1-5.56 5.56A4.2 4.2 0 0 1 9.9 21.2a4.2 4.2 0 0 1-5.56-5.56A4.2 4.2 0 0 1 2.8 12a4.2 4.2 0 0 1 2.1-3.64A4.2 4.2 0 0 1 10.46 2.8 4.4 4.4 0 0 1 12 2.8Zm0 2.1a2.1 2.1 0 0 0-1.05.28L7.32 7.27a2.1 2.1 0 0 0-1.05 1.82v4.18a2.1 2.1 0 0 0 1.05 1.82l3.63 2.09a2.1 2.1 0 0 0 2.1 0l3.63-2.09a2.1 2.1 0 0 0 1.05-1.82V9.09a2.1 2.1 0 0 0-1.05-1.82l-3.63-2.09A2.1 2.1 0 0 0 12 4.9Zm0 3.1 3.46 2v4L12 16l-3.46-2v-4L12 8Z',
 };
 
-const ANTIGRAVITY_SLASH_COMMANDS = [
+interface SlashCommand {
+  name: string;
+  hint: string;
+  description: string;
+}
+
+const ANTIGRAVITY_SLASH_COMMANDS: SlashCommand[] = [
   { name: '/help', hint: 'Show Antigravity help', description: 'Ask Antigravity CLI for available commands and usage.' },
   { name: '/status', hint: 'Show agent status', description: 'Ask Antigravity to summarize workspace, permissions, and active note context.' },
   { name: '/model', hint: 'Model selector', description: 'Open or request the Antigravity model selector.' },
@@ -34,6 +40,7 @@ export class ObsigravityView extends ItemView {
   private historyMenuEl: HTMLElement | null = null;
   private welcomeEl: HTMLElement | null = null;
   private messages: ConversationMessage[] = [];
+  private discoveredSlashCommands: SlashCommand[] = [];
   private currentConversationId: string | null = null;
   private isRunning = false;
   private selectedSlashCommandIndex = 0;
@@ -73,6 +80,7 @@ export class ObsigravityView extends ItemView {
     this.registerEvent(this.app.workspace.on('file-open', () => this.renderFileChips()));
     this.registerDomEvent(document, 'click', () => this.hideHistoryMenu());
     this.renderFileChips();
+    this.refreshDiscoveredSlashCommands();
   }
 
   async onClose(): Promise<void> {
@@ -379,10 +387,28 @@ export class ObsigravityView extends ItemView {
     return beforeCursor.toLowerCase();
   }
 
-  private getFilteredSlashCommands(): typeof ANTIGRAVITY_SLASH_COMMANDS {
+  private getAllSlashCommands(): SlashCommand[] {
+    const commands = new Map<string, SlashCommand>();
+    for (const command of ANTIGRAVITY_SLASH_COMMANDS) commands.set(command.name, command);
+    for (const command of this.discoveredSlashCommands) {
+      if (!commands.has(command.name)) commands.set(command.name, command);
+    }
+    return [...commands.values()];
+  }
+
+  private refreshDiscoveredSlashCommands(): void {
+    const tools = this.plugin.getClaudeTools();
+    this.discoveredSlashCommands = tools.map((tool) => ({
+      name: `/${tool.name}`,
+      hint: tool.kind === 'command' ? 'Claude command' : 'Claude skill',
+      description: `${tool.description} (${tool.kind})`,
+    }));
+  }
+
+  private getFilteredSlashCommands(): SlashCommand[] {
     const query = this.getSlashQuery();
     if (query === null) return [];
-    return ANTIGRAVITY_SLASH_COMMANDS.filter((command) => command.name.startsWith(query));
+    return this.getAllSlashCommands().filter((command) => command.name.startsWith(query));
   }
 
   private renderSlashCommands(): void {

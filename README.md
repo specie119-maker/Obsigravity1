@@ -10,6 +10,7 @@ V1 focuses on the capability that is currently native in the local Antigravity C
 - **Active note context**: The current note, selected text, and pinned notes can be sent to Antigravity automatically.
 - **Conversation history**: Reopen recent plugin conversations from the header history menu.
 - **Claude/Gemini tool import**: Bring Claude Code or Gemini plugin packs into Antigravity through `agy plugin import`.
+- **Claude slash catalog**: Discover local Claude Code commands and skills so they appear in Obsigravity slash suggestions.
 - **External CLI detection**: Auto-detect optional Claude Code, Codex CLI, and Grok CLI installs so future slash-command routes can enable themselves only when available.
 - **Model preference**: Choose a preferred AGY model lane from the sidebar or settings. Obsigravity passes the preference into each run while AGY keeps control of actual model switching.
 - **Image generation from notes**: Draft a production prompt from the active note, review it, generate a raster image with Antigravity, save it into the vault, and embed it in the note.
@@ -52,6 +53,7 @@ The settings page includes:
 - **Start Google Sign-In**: starts Antigravity CLI so it can open the browser-based Google OAuth flow when no saved session exists.
 - **Recheck**: verifies `agy --help` from Obsidian's environment and saves the detected CLI path.
 - **Import Claude/Gemini plugins**: runs `agy plugin import claude`, `agy plugin import gemini`, or both.
+- **Claude command discovery**: scans local Claude Code command and skill folders and exposes them in the slash picker.
 - **External CLI connectors**: detects local `claude`, `codex`, and `grok` binaries and stores their paths for future provider routing.
 - **Model preference**: stores your preferred AGY model and includes it in Obsigravity prompts.
 
