@@ -16,6 +16,7 @@ V1 focuses on the capability that is currently native in the local Antigravity C
 - **Brief casual replies**: Simple greetings are answered locally instead of triggering active-note analysis.
 - **No default vault scan**: Normal chat sends note text as context without exposing the whole vault as an AGY workspace.
 - **External CLI detection**: Auto-detect optional Claude Code, Codex CLI, and Grok CLI installs so future slash-command routes can enable themselves only when available.
+- **External CLI routing**: Use `/claude`, `/codex`, `/grok`, or `/collab` to call local Claude Code, Codex CLI, and Grok Build from the Obsidian sidebar with active-note context.
 - **Model preference**: Choose a preferred AGY model lane from the sidebar or settings. Obsigravity passes the preference into each run while AGY keeps control of actual model switching.
 - **Image generation from notes**: Draft a production prompt from the active note, review it, generate a raster image with Antigravity, save it into the vault, and embed it in the note.
 - **Capability probe**: Check native Antigravity support for image, video, and TTS without silently falling back to other providers.
@@ -61,6 +62,17 @@ The settings page includes:
 - **Claude command discovery**: scans local Claude Code command and skill folders and exposes them in the slash picker.
 - **External CLI connectors**: detects local `claude`, `codex`, and `grok` binaries and stores their paths for future provider routing.
 - **Model preference**: stores your preferred AGY model and includes it in Obsigravity prompts.
+
+## External CLI Collaboration
+
+Obsigravity can call local companion CLIs when they are installed:
+
+- `/claude <task>` sends the task to Claude Code CLI.
+- `/codex <task>` sends the task to Codex CLI.
+- `/grok <task>` sends the task to Grok Build CLI.
+- `/collab <task>` runs Claude, Codex, and Grok in parallel and renders a multi-model comparison.
+
+The active note, selected text, and pinned notes are included as context. Permission mode maps conservatively into each CLI: Safe uses read-only/default behavior, Auto allows normal automatic workspace work where supported, and Yolo maps to each CLI's bypass/full-access mode.
 
 Official install commands used by the plugin:
 

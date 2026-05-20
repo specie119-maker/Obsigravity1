@@ -1,6 +1,8 @@
 import { ItemView, MarkdownRenderer, Notice, setIcon, type TFile, type WorkspaceLeaf } from 'obsidian';
 
 import type ObsigravityPlugin from '../main';
+import { runExternalCli } from '../core/cli/ExternalCliRunner';
+import type { ExternalCliId } from '../core/cli/ExternalCliResolver';
 import type { ConversationMessage, ConversationSession, PermissionMode, PreferredModel } from '../core/types';
 
 export const VIEW_TYPE_OBSIGRAVITY = 'obsigravity-view';
@@ -28,6 +30,10 @@ const ANTIGRAVITY_SLASH_COMMANDS: SlashCommand[] = [
   { name: '/probe', hint: 'Probe media support', description: 'Check native image, video, and TTS capability honesty.' },
   { name: '/image', hint: 'Generate image', description: 'Generate an Antigravity-native image from the active note.' },
   { name: '/diff', hint: 'Review vault changes', description: 'Ask Antigravity to summarize local file changes.' },
+  { name: '/claude', hint: 'Claude Code CLI', description: 'Send the request to the local Claude Code CLI with note context.' },
+  { name: '/codex', hint: 'Codex CLI', description: 'Send the request to the local Codex CLI with note context.' },
+  { name: '/grok', hint: 'Grok Build CLI', description: 'Send the request to the local Grok Build CLI with note context.' },
+  { name: '/collab', hint: 'Multi-model panel', description: 'Ask Claude, Codex, and Grok in parallel and compare their answers.' },
 ];
 
 export class ObsigravityView extends ItemView {
@@ -463,7 +469,7 @@ export class ObsigravityView extends ItemView {
     this.autoResizeInput();
 
     if (this.handleCasualPrompt(prompt)) return;
-    if (this.handleLocalSlashCommand(prompt)) return;
+    if (await this.handleLocalSlashCommand(prompt)) return;
 
     this.isRunning = true;
     this.appendMessage({ role: 'user', content: prompt, timestamp: Date.now() });
@@ -535,7 +541,7 @@ export class ObsigravityView extends ItemView {
     return true;
   }
 
-  private handleLocalSlashCommand(prompt: string): boolean {
+  private async handleLocalSlashCommand(prompt: string): Promise<boolean> {
     if (prompt === '/skills') {
       this.appendMessage({ role: 'user', content: prompt, timestamp: Date.now() });
       const tools = this.plugin.getClaudeTools();
@@ -566,7 +572,10 @@ export class ObsigravityView extends ItemView {
           '- `/skills` lists local Claude commands and skills.',
           '- `/image` starts image-generation prompting from the active note.',
           '- `/model` shows model preference guidance.',
-          '- `/claude`, `/codex`, and `/grok` routing is planned after connector execution adapters land.',
+          '- `/claude <task>` runs local Claude Code CLI.',
+          '- `/codex <task>` runs local Codex CLI.',
+          '- `/grok <task>` runs local Grok Build CLI.',
+          '- `/collab <task>` asks Claude, Codex, and Grok in parallel.',
           '',
           'You can also type normal text and press Enter to send it to Antigravity.',
         ].join('\n'),
@@ -585,7 +594,92 @@ export class ObsigravityView extends ItemView {
       return true;
     }
 
+    const external = this.parseExternalSlashCommand(prompt);
+    if (external) {
+      await this.runExternalSlashCommand(external.ids, external.request, prompt);
+      return true;
+    }
+
     return false;
+  }
+
+  private parseExternalSlashCommand(prompt: string): { ids: ExternalCliId[]; request: string } | null {
+    const match = prompt.match(/^\/(claude|codex|grok|collab)(?:\s+([\s\S]+))?$/);
+    if (!match) return null;
+    const command = match[1];
+    const request = (match[2] || '').trim();
+    if (!request) {
+      return {
+        ids: command === 'collab' ? ['claude', 'codex', 'grok'] : [command as ExternalCliId],
+        request: 'Summarize what you can do from Obsigravity in one concise paragraph.',
+      };
+    }
+    return {
+      ids: command === 'collab' ? ['claude', 'codex', 'grok'] : [command as ExternalCliId],
+      request,
+    };
+  }
+
+  private async runExternalSlashCommand(ids: ExternalCliId[], request: string, originalPrompt: string): Promise<void> {
+    this.isRunning = true;
+    this.appendMessage({ role: 'user', content: originalPrompt, timestamp: Date.now() });
+
+    const assistantEl = this.createMessageEl('assistant');
+    const progressEl = this.createProgressTimeline(assistantEl);
+    const progressListEl = progressEl.querySelector('.oc-progress-list') as HTMLElement;
+    const contentEl = assistantEl.createDiv({ cls: 'oc-message-content' });
+    this.appendProgressStep(progressListEl, `Launching ${ids.map((id) => id.toUpperCase()).join(' + ')} CLI`);
+
+    try {
+      const context = await this.plugin.getActiveNoteContext();
+      const runs = ids.map(async (id) => {
+        this.appendProgressStep(progressListEl, `${id} process started`);
+        const result = await runExternalCli({
+          id,
+          prompt: request,
+          cwd: this.plugin.getVaultPath(),
+          settings: this.plugin.settings,
+          activeNotePath: context?.path,
+          activeNoteContent: context?.content,
+          selectedText: context?.selection,
+          pinnedNotes: context?.pinnedNotes,
+        });
+        this.appendProgressStep(progressListEl, `${id} response received`);
+        return result;
+      });
+
+      const settled = await Promise.allSettled(runs);
+      const sections = settled.map((result, index) => {
+        const id = ids[index];
+        if (result.status === 'rejected') {
+          return `## ${id.toUpperCase()}\n\nERROR: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`;
+        }
+        return [
+          `## ${id.toUpperCase()}`,
+          '',
+          `Command: \`${result.value.command}\``,
+          '',
+          result.value.output,
+        ].join('\n');
+      });
+
+      const content = ids.length > 1
+        ? ['# Multi-model collaboration', '', ...sections].join('\n')
+        : sections.join('\n');
+      progressEl.addClass('is-complete');
+      this.appendProgressStep(progressListEl, 'External CLI response rendered');
+      await this.renderMarkdown(content, contentEl);
+      this.messages.push({ role: 'assistant', content, timestamp: Date.now() });
+      this.saveCurrentConversation();
+      this.renderHistoryMenu();
+    } catch (error) {
+      progressEl.addClass('is-error');
+      const message = error instanceof Error ? error.message : String(error);
+      this.appendProgressStep(progressListEl, `Error: ${message}`);
+      this.appendMessage({ role: 'error', content: message, timestamp: Date.now() });
+    } finally {
+      this.isRunning = false;
+    }
   }
 
   private appendMessage(message: ConversationMessage): void {
