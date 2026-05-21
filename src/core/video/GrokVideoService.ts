@@ -59,6 +59,8 @@ export async function generateGrokVideoFromNote(request: GenerateGrokVideoReques
     cwd: request.vaultPath,
     settings: request.settings,
     timeoutMs: GROK_VIDEO_TIMEOUT_MS,
+    permissionModeOverride: 'yolo',
+    alwaysApprove: true,
     activeNotePath: request.file.path,
     activeNoteContent: request.noteContent,
     selectedText: request.selectedText,
@@ -67,7 +69,7 @@ export async function generateGrokVideoFromNote(request: GenerateGrokVideoReques
 
   if (!(await request.app.vault.adapter.exists(vaultRelativePath))) {
     request.onProgress?.('Grok Build did not create the expected MP4 file.');
-    throw new Error(`Grok Build did not create the expected MP4 file: ${vaultRelativePath}\n\n${result.output}`);
+    throw new Error(`Grok Build did not create the expected MP4 file: ${vaultRelativePath}\n\nCommand: ${result.command}\n\n${result.output}`);
   }
 
   request.onProgress?.('Embedding generated video with a note title caption...');

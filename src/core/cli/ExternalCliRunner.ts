@@ -13,6 +13,8 @@ export interface ExternalCliRunInput {
   cwd: string;
   settings: ObsigravitySettings;
   timeoutMs?: number;
+  alwaysApprove?: boolean;
+  permissionModeOverride?: PermissionMode;
   activeNotePath?: string;
   activeNoteContent?: string;
   selectedText?: string;
@@ -34,7 +36,14 @@ export async function runExternalCli(input: ExternalCliRunInput): Promise<Extern
 
   env.PATH = mergePath(env.PATH, [path.dirname(command)]);
   const prompt = buildExternalPrompt(input);
-  const invocation = buildInvocation(input.id, input.settings.permissionMode, input.settings.preferredModel, input.cwd, prompt);
+  const invocation = buildInvocation(
+    input.id,
+    input.permissionModeOverride || input.settings.permissionMode,
+    input.settings.preferredModel,
+    input.cwd,
+    prompt,
+    input.alwaysApprove
+  );
   let output = '';
   try {
     output = await runProcess(command, invocation.args, env, input.cwd, invocation.stdin, input.timeoutMs);
@@ -53,7 +62,8 @@ function buildInvocation(
   permissionMode: PermissionMode,
   preferredModel: PreferredModel,
   cwd: string,
-  prompt: string
+  prompt: string,
+  alwaysApprove = false
 ): { args: string[]; stdin?: string; cleanup?: () => void } {
   if (id === 'claude') {
     const args = ['--print', '--output-format', 'text', '--permission-mode', claudePermissionMode(permissionMode)];
@@ -73,6 +83,7 @@ function buildInvocation(
   const promptFile = path.join(getExternalCliRunDirectory(), `grok-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
   fs.writeFileSync(promptFile, prompt, 'utf8');
   const args = ['--cwd', cwd, '--prompt-file', promptFile, '--output-format', 'plain', '--permission-mode', grokPermissionMode(permissionMode)];
+  if (alwaysApprove) args.push('--always-approve');
   const model = grokModel(preferredModel);
   if (model) args.push('--model', model);
   return {
