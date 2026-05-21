@@ -1,4 +1,4 @@
-import { ItemView, MarkdownRenderer, Notice, setIcon, type TFile, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, MarkdownRenderer, Notice, normalizePath, setIcon, TFile, type WorkspaceLeaf } from 'obsidian';
 
 import ObsigravityPlugin, { OBSIGRAVITY_ICON } from '../main';
 import { runExternalCli } from '../core/cli/ExternalCliRunner';
@@ -331,6 +331,52 @@ export class ObsigravityView extends ItemView {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!file || !('extension' in file)) return;
     await this.app.workspace.getLeaf(false).openFile(file as TFile);
+  }
+
+  private async openRenderedLink(rawTarget: string, label: string): Promise<boolean> {
+    const target = this.normalizeRenderedLinkTarget(rawTarget, label);
+    if (!target) return false;
+
+    if (/^(https?:\/\/|mailto:|obsidian:\/\/)/i.test(target)) {
+      window.open(target, '_blank', 'noopener');
+      return true;
+    }
+
+    const activePath = this.plugin.getActiveMarkdownFile()?.path || '';
+    const notePath = this.stripHeadingOrBlock(target);
+    const exactFile = this.app.vault.getAbstractFileByPath(normalizePath(notePath));
+    if (exactFile instanceof TFile) {
+      await this.app.workspace.getLeaf(false).openFile(exactFile);
+      return true;
+    }
+
+    const linkText = target.replace(/^\[\[|\]\]$/g, '');
+    const resolved = this.app.metadataCache.getFirstLinkpathDest(this.stripHeadingOrBlock(linkText).replace(/\.md$/i, ''), activePath);
+    if (resolved) {
+      await this.app.workspace.openLinkText(linkText, activePath, false);
+      return true;
+    }
+
+    if (target.endsWith('.md') || target.includes('/')) {
+      new Notice(`Obsigravity could not find note: ${target}`);
+      return true;
+    }
+
+    return false;
+  }
+
+  private normalizeRenderedLinkTarget(rawTarget: string, label: string): string {
+    const raw = (rawTarget || label || '').trim();
+    if (!raw) return '';
+    try {
+      return decodeURI(raw);
+    } catch {
+      return raw;
+    }
+  }
+
+  private stripHeadingOrBlock(target: string): string {
+    return target.split('#')[0].split('^')[0].split('?')[0].replace(/^\/+/, '');
   }
 
   private createNewConversation(): void {
@@ -974,6 +1020,20 @@ export class ObsigravityView extends ItemView {
   private async renderMarkdown(markdown: string, el: HTMLElement): Promise<void> {
     el.empty();
     await MarkdownRenderer.renderMarkdown(markdown, el, '', this);
+    this.enableRenderedLinks(el);
     if (this.messagesEl) this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+
+  private enableRenderedLinks(el: HTMLElement): void {
+    for (const anchor of Array.from(el.querySelectorAll('a'))) {
+      anchor.addClass('oc-rendered-link');
+      anchor.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const rawTarget = anchor.getAttribute('data-href') || anchor.getAttribute('href') || '';
+        const label = anchor.textContent || '';
+        void this.openRenderedLink(rawTarget, label);
+      });
+    }
   }
 }
