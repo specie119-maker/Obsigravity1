@@ -1,6 +1,6 @@
 {
   "name": "obsigravity",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "Obsigravity - Antigravity CLI image generation inside Obsidian",
   "main": "main.js",
   "scripts": {
