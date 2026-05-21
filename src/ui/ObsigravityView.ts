@@ -1,6 +1,6 @@
 import { ItemView, MarkdownRenderer, Notice, setIcon, type TFile, type WorkspaceLeaf } from 'obsidian';
 
-import type ObsigravityPlugin from '../main';
+import ObsigravityPlugin, { OBSIGRAVITY_ICON } from '../main';
 import { runExternalCli } from '../core/cli/ExternalCliRunner';
 import type { ExternalCliId } from '../core/cli/ExternalCliResolver';
 import { BUILTIN_SKILLS, getBuiltinSkillBySlash, type BuiltinSkill } from '../core/skills/BuiltinSkills';
@@ -74,7 +74,7 @@ export class ObsigravityView extends ItemView {
   }
 
   getIcon(): string {
-    return 'bot';
+    return OBSIGRAVITY_ICON;
   }
 
   async onOpen(): Promise<void> {
