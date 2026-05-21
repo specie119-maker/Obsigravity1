@@ -70,8 +70,8 @@ export async function generateGrokVideoFromNote(request: GenerateGrokVideoReques
     throw new Error(`Grok Build did not create the expected MP4 file: ${vaultRelativePath}\n\n${result.output}`);
   }
 
-  request.onProgress?.('Embedding generated video at the top of the note...');
-  await request.app.vault.process(request.file, (content) => embedAtTop(content, vaultRelativePath));
+  request.onProgress?.('Embedding generated video with a note title caption...');
+  await request.app.vault.process(request.file, (content) => embedAtTop(content, vaultRelativePath, request.file.basename));
   request.onProgress?.(`Video embedded: ${vaultRelativePath}`);
 
   return {
@@ -95,14 +95,19 @@ function buildGrokVideoPrompt(vaultRelativePath: string, request: GenerateGrokVi
     '- Keep the final file inside the Obsidian vault.',
     '- Verify the final file exists before finishing.',
     '- Do not edit the markdown note; Obsigravity will embed the video after the file exists.',
+    '- Do not render readable text, captions, subtitles, UI labels, note titles, or logos inside the video.',
+    '- If the user asks for text in the video, translate that request into non-text visual mood, motion, symbols, or composition.',
+    '- Prefer abstract visual metaphors, cinematic motion, workspace imagery, diagrams, and symbolic scenes.',
     '',
     'Video direction:',
-    request.userPrompt.trim() || 'Create a concise 8-12 second visual briefing video from the note, suitable for embedding in Obsidian.',
+    request.userPrompt.trim() ||
+      'Create a concise 8-12 second visual briefing video from the note, suitable for embedding in Obsidian. Use no readable text.',
   ].join('\n');
 }
 
-function embedAtTop(content: string, vaultRelativePath: string): string {
+function embedAtTop(content: string, vaultRelativePath: string, noteTitle: string): string {
   const embed = `![[${vaultRelativePath}]]`;
+  const block = `${embed}\n\n> ${noteTitle}`;
   if (content.includes(embed)) return content;
   if (content.startsWith('---\n')) {
     const frontmatterEnd = content.indexOf('\n---', 4);
@@ -111,8 +116,8 @@ function embedAtTop(content: string, vaultRelativePath: string): string {
       const hasTrailingNewline = content.slice(closingEnd).startsWith('\n');
       const before = content.slice(0, closingEnd);
       const after = content.slice(closingEnd + (hasTrailingNewline ? 1 : 0));
-      return `${before}\n\n${embed}\n\n${after}`;
+      return `${before}\n\n${block}\n\n${after}`;
     }
   }
-  return `${embed}\n\n${content}`;
+  return `${block}\n\n${content}`;
 }
