@@ -1,4 +1,4 @@
-export type BuiltinSkillId = 'note-surgeon' | 'atomic-split' | 'vault-cartographer';
+export type BuiltinSkillId = 'note-surgeon' | 'atomic-split' | 'vault-cartographer' | 'skill-forge';
 
 export interface BuiltinSkill {
   id: BuiltinSkillId;
@@ -125,10 +125,67 @@ export const BUILTIN_SKILLS: BuiltinSkill[] = [
       withOptionalRequest(request),
     ].join('\n'),
   },
+  {
+    id: 'skill-forge',
+    slash: '/skill-forge',
+    name: 'Obsigravity Skill Forge',
+    hint: 'Create an Obsidian skill',
+    description: 'Design a new Obsidian-native slash skill from a workflow idea, including trigger, inputs, outputs, safety rules, and markdown skill file.',
+    buildPrompt: (request) => [
+      COMMON_OBSIDIAN_RULES,
+      '',
+      '# Built-in Skill: Obsigravity Skill Forge',
+      '',
+      'Goal: turn the user\'s workflow idea into a reusable Obsigravity Obsidian-native slash skill.',
+      '',
+      'The created skill should feel native to Obsidian, not like a generic prompt. It should understand active notes, selected text, pinned notes, wikilinks, frontmatter, tags, embeds, note creation, and safe note editing.',
+      '',
+      'Workflow:',
+      '1. Infer the intended workflow from the user request and active note context.',
+      '2. If the request is underspecified, make a reasonable first version and list assumptions instead of asking many questions.',
+      '3. Design the skill contract: slash name, purpose, activation examples, input context, output files/sections, mutation policy, safety rules, and verification steps.',
+      '4. Produce a ready-to-save markdown skill definition for Obsigravity.',
+      '5. If safe file editing is available and the user explicitly asked to create/install the skill, write it under `.obsigravity/skills/<skill-id>/SKILL.md`; otherwise output the file content and install steps.',
+      '',
+      'Skill file format to generate:',
+      '---',
+      'name: <kebab-case-skill-name>',
+      'slash: /<kebab-case-skill-name>',
+      'description: <one sentence>',
+      'inputs:',
+      '  activeNote: true|false',
+      '  selectedText: true|false',
+      '  pinnedNotes: true|false',
+      '  folderScope: optional|required|none',
+      'mutationPolicy: preview-first|apply-when-explicit|read-only',
+      '---',
+      '',
+      '# <Skill Name>',
+      '',
+      '## Purpose',
+      '## When To Use',
+      '## Inputs',
+      '## Workflow',
+      '## Output Contract',
+      '## Safety Rules',
+      '## Verification',
+      '## Example Invocations',
+      '',
+      'Output format:',
+      '## Skill Forge Result',
+      '- Slash command',
+      '- What it does',
+      '- Files to create',
+      '- Generated SKILL.md',
+      '- Test prompts',
+      '- Upgrade path using Antigravity SDK if the skill needs programmatic tools',
+      withOptionalRequest(request),
+    ].join('\n'),
+  },
 ];
 
 export function getBuiltinSkillBySlash(prompt: string): { skill: BuiltinSkill; request: string } | null {
-  const match = prompt.match(/^\/(note-surgeon|atomic-split|vault-cartographer)(?:\s+([\s\S]+))?$/);
+  const match = prompt.match(/^\/(note-surgeon|atomic-split|vault-cartographer|skill-forge)(?:\s+([\s\S]+))?$/);
   if (!match) return null;
   const skill = BUILTIN_SKILLS.find((item) => item.id === match[1]);
   if (!skill) return null;

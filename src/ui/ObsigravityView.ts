@@ -599,6 +599,7 @@ export class ObsigravityView extends ItemView {
           '- `/note-surgeon <optional direction>` cleans and restructures the active note.',
           '- `/atomic-split <optional direction>` splits the active note into linked atomic notes.',
           '- `/vault-cartographer <optional scope>` maps the active note neighborhood or selected folder.',
+          '- `/skill-forge <workflow idea>` designs a reusable Obsidian-native slash skill.',
           '- `/skills` lists local Claude commands and skills.',
           '- `/image` starts image-generation prompting from the active note.',
           '- `/grok-video <direction>` asks Grok Build to generate and embed an MP4 from the active note.',
