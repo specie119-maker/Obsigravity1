@@ -9,6 +9,7 @@ V1 focuses on the capability that is currently native in the local Antigravity C
 - **Antigravity sidebar in Obsidian**: Chat with Antigravity from a native Obsidian sidebar.
 - **Active note context**: The current note, selected text, and pinned notes can be sent to Antigravity automatically.
 - **Conversation history**: Reopen recent plugin conversations from the header history menu.
+- **Built-in Obsidian skills**: Use `/note-surgeon`, `/atomic-split`, and `/vault-cartographer` immediately after installation.
 - **Claude/Gemini tool import**: Bring Claude Code or Gemini plugin packs into Antigravity through `agy plugin import`.
 - **Claude-to-AGY conversion**: One-click convert local Claude Code skills and slash commands into an Antigravity plugin that AGY can validate, install, enable, and use.
 - **Claude slash catalog**: Discover local Claude Code commands and skills so they appear in Obsigravity slash suggestions.
@@ -21,6 +22,16 @@ V1 focuses on the capability that is currently native in the local Antigravity C
 - **Image generation from notes**: Draft a production prompt from the active note, review it, generate a raster image with Antigravity, save it into the vault, and embed it in the note.
 - **Grok Build video generation**: Use the video button, command palette, or `/grok-video` to ask Grok Build to generate a real MP4 from the active note and embed it.
 - **Capability probe**: Check native Antigravity support for image, video, and TTS without silently falling back to other providers.
+
+## Built-in Obsidian Skills
+
+Obsigravity ships with three Obsidian-native skills. They do not require Claude Code skills to be installed.
+
+- `/note-surgeon <optional direction>` repairs the active note: structure, headings, frontmatter, tags, callouts, duplicate sections, and link candidates.
+- `/atomic-split <optional direction>` breaks a long active note or selected text into linked atomic notes and leaves a backlink/index trail in the source note.
+- `/vault-cartographer <optional scope>` maps the active note neighborhood or a named folder into clusters, missing links, MOC candidates, orphan notes, and an optional Mermaid/JSON graph sketch.
+
+These skills run through Antigravity with active-note context and explicit workspace access. Normal chat remains note-context-only and does not scan the vault unless the user asks for mapping/search.
 
 ## Current Capability Boundary
 

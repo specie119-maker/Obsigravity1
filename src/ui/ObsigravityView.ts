@@ -3,6 +3,7 @@ import { ItemView, MarkdownRenderer, Notice, setIcon, type TFile, type Workspace
 import type ObsigravityPlugin from '../main';
 import { runExternalCli } from '../core/cli/ExternalCliRunner';
 import type { ExternalCliId } from '../core/cli/ExternalCliResolver';
+import { BUILTIN_SKILLS, getBuiltinSkillBySlash, type BuiltinSkill } from '../core/skills/BuiltinSkills';
 import type { ConversationMessage, ConversationSession, PermissionMode, PreferredModel } from '../core/types';
 
 export const VIEW_TYPE_OBSIGRAVITY = 'obsigravity-view';
@@ -36,6 +37,12 @@ const ANTIGRAVITY_SLASH_COMMANDS: SlashCommand[] = [
   { name: '/grok', hint: 'Grok Build CLI', description: 'Send the request to the local Grok Build CLI with note context.' },
   { name: '/collab', hint: 'Multi-model panel', description: 'Ask Claude, Codex, and Grok in parallel and compare their answers.' },
 ];
+
+const BUILTIN_SKILL_SLASH_COMMANDS: SlashCommand[] = BUILTIN_SKILLS.map((skill) => ({
+  name: skill.slash,
+  hint: skill.hint,
+  description: skill.description,
+}));
 
 export class ObsigravityView extends ItemView {
   private plugin: ObsigravityPlugin;
@@ -411,6 +418,7 @@ export class ObsigravityView extends ItemView {
 
   private getAllSlashCommands(): SlashCommand[] {
     const commands = new Map<string, SlashCommand>();
+    for (const command of BUILTIN_SKILL_SLASH_COMMANDS) commands.set(command.name, command);
     for (const command of ANTIGRAVITY_SLASH_COMMANDS) commands.set(command.name, command);
     for (const command of this.discoveredSlashCommands) {
       if (!commands.has(command.name)) commands.set(command.name, command);
@@ -564,7 +572,10 @@ export class ObsigravityView extends ItemView {
       const commands = tools.filter((tool) => tool.kind === 'command').slice(0, 40);
       const skills = tools.filter((tool) => tool.kind === 'skill').slice(0, 40);
       const lines = [
-        `Found ${tools.length} local Claude tools.`,
+        `Found ${BUILTIN_SKILLS.length} built-in Obsigravity skills and ${tools.length} local Claude tools.`,
+        '',
+        '## Built-in Obsigravity skills',
+        BUILTIN_SKILLS.map((skill) => `- \`${skill.slash}\` - ${skill.description}`).join('\n'),
         '',
         '## Claude commands',
         commands.length ? commands.map((tool) => `- \`/${tool.name}\` - ${tool.description}`).join('\n') : '- None detected',
@@ -572,7 +583,7 @@ export class ObsigravityView extends ItemView {
         '## Claude skills',
         skills.length ? skills.map((tool) => `- \`/${tool.name}\` - ${tool.description}`).join('\n') : '- None detected',
         '',
-        'These are now shown in the slash picker. Provider execution routing is coming next.',
+        'Built-in skills run directly through Obsigravity with active-note context. Claude tools are shown in the slash picker when discovered locally.',
       ];
       this.appendMessage({ role: 'assistant', content: lines.join('\n'), timestamp: Date.now() });
       return true;
@@ -585,6 +596,9 @@ export class ObsigravityView extends ItemView {
         content: [
           'Obsigravity slash commands:',
           '',
+          '- `/note-surgeon <optional direction>` cleans and restructures the active note.',
+          '- `/atomic-split <optional direction>` splits the active note into linked atomic notes.',
+          '- `/vault-cartographer <optional scope>` maps the active note neighborhood or selected folder.',
           '- `/skills` lists local Claude commands and skills.',
           '- `/image` starts image-generation prompting from the active note.',
           '- `/grok-video <direction>` asks Grok Build to generate and embed an MP4 from the active note.',
@@ -611,6 +625,12 @@ export class ObsigravityView extends ItemView {
       return true;
     }
 
+    const builtin = getBuiltinSkillBySlash(prompt);
+    if (builtin) {
+      await this.runBuiltinSkill(builtin.skill, builtin.request, prompt);
+      return true;
+    }
+
     const videoMatch = prompt.match(/^\/grok-video(?:\s+([\s\S]+))?$/);
     if (videoMatch) {
       await this.plugin.generateGrokVideoFromActiveNote((videoMatch[1] || '').trim());
@@ -624,6 +644,62 @@ export class ObsigravityView extends ItemView {
     }
 
     return false;
+  }
+
+  private async runBuiltinSkill(skill: BuiltinSkill, request: string, originalPrompt: string): Promise<void> {
+    this.isRunning = true;
+    this.appendMessage({ role: 'user', content: originalPrompt, timestamp: Date.now() });
+
+    const assistantEl = this.createMessageEl('assistant');
+    const progressEl = this.createProgressTimeline(assistantEl);
+    const progressListEl = progressEl.querySelector('.oc-progress-list') as HTMLElement;
+    const contentEl = assistantEl.createDiv({ cls: 'oc-message-content' });
+    this.appendProgressStep(progressListEl, `${skill.name} started`);
+
+    try {
+      const context = await this.plugin.getActiveNoteContext();
+      if (!context?.path && !context?.pinnedNotes?.length) {
+        throw new Error(`${skill.name} needs an active or pinned Obsidian note.`);
+      }
+
+      let assistantBuffer = '';
+      for await (const event of this.plugin.agent.query({
+        prompt: skill.buildPrompt(request),
+        cwd: this.plugin.getVaultPath(),
+        allowWorkspaceAccess: true,
+        activeNotePath: context.path,
+        activeNoteContent: context.content,
+        selectedText: context.selection,
+        pinnedNotes: context.pinnedNotes,
+      })) {
+        if (event.type === 'text') {
+          assistantBuffer += event.content;
+          progressEl.addClass('is-complete');
+          this.appendProgressStep(progressListEl, `${skill.name} response received`);
+          await this.renderMarkdown(assistantBuffer, contentEl);
+        } else if (event.type === 'progress') {
+          this.appendProgressStep(progressListEl, event.content);
+        } else if (event.type === 'error') {
+          progressEl.addClass('is-error');
+          this.appendProgressStep(progressListEl, `Error: ${event.content}`);
+          this.appendMessage({ role: 'error', content: event.content, timestamp: Date.now() });
+        }
+      }
+
+      progressEl.addClass('is-complete');
+      if (assistantBuffer.trim()) {
+        this.messages.push({ role: 'assistant', content: assistantBuffer, timestamp: Date.now() });
+        this.saveCurrentConversation();
+        this.renderHistoryMenu();
+      }
+    } catch (error) {
+      progressEl.addClass('is-error');
+      const message = error instanceof Error ? error.message : String(error);
+      this.appendProgressStep(progressListEl, `Error: ${message}`);
+      this.appendMessage({ role: 'error', content: message, timestamp: Date.now() });
+    } finally {
+      this.isRunning = false;
+    }
   }
 
   private parseExternalSlashCommand(prompt: string): { ids: ExternalCliId[]; request: string } | null {
