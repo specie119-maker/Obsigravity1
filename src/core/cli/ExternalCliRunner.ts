@@ -36,13 +36,14 @@ export async function runExternalCli(input: ExternalCliRunInput): Promise<Extern
 
   env.PATH = mergePath(env.PATH, [path.dirname(command)]);
   const prompt = buildExternalPrompt(input);
+  const shouldAlwaysApprove = input.alwaysApprove || (input.id === 'grok' && isFreshSearchRequest(input.prompt));
   const invocation = buildInvocation(
     input.id,
     input.permissionModeOverride || input.settings.permissionMode,
     input.settings.preferredModel,
     input.cwd,
     prompt,
-    input.alwaysApprove
+    shouldAlwaysApprove
   );
   let output = '';
   try {
@@ -102,9 +103,19 @@ function buildExternalPrompt(input: ExternalCliRunInput): string {
   const parts = [
     'You are being called from the Obsigravity Obsidian plugin as a collaborating local CLI agent.',
     'Answer the user directly. Use the active note context only when it is relevant.',
-    '',
-    `User request:\n${input.prompt}`,
+    'The active Obsidian note is provided as text context, not as permission to list, grep, scan, or recursively inspect the vault. Do not inspect local vault files unless the user explicitly asks for vault search or file operations.',
   ];
+
+  if (input.id === 'grok' && isFreshSearchRequest(input.prompt)) {
+    parts.push(
+      'This request needs fresh external search.',
+      'Use Grok web search or web fetch capabilities for current public information. For X/Twitter requests, search public X/Twitter/web results and include handles, dates, and source URLs when available.',
+      'If native X search is unavailable in this Grok CLI session, say so plainly and use web search constrained to public x.com/twitter.com results instead.',
+      'Do not use local filesystem tools to satisfy external search requests. The active note may only be used to derive the search query.'
+    );
+  }
+
+  parts.push('', `User request:\n${input.prompt}`);
 
   if (input.selectedText) {
     parts.push('', `Selected text from the active note:\n${input.selectedText}`);
@@ -122,6 +133,10 @@ function buildExternalPrompt(input: ExternalCliRunInput): string {
   }
 
   return parts.join('\n');
+}
+
+function isFreshSearchRequest(prompt: string): boolean {
+  return /(?:\bsearch\b|\bweb\b|\blatest\b|\brecent\b|\bnews\b|\btweet\w*\b|\btwitter\b|\bx\.com\b|검색|최신|최근|뉴스|트윗|트위터|엑스|X에서|x에서)/i.test(prompt);
 }
 
 function runProcess(command: string, args: string[], env: NodeJS.ProcessEnv, cwd: string, stdin?: string, timeoutMs = 180_000): Promise<string> {
