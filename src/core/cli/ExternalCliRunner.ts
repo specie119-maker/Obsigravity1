@@ -12,6 +12,7 @@ export interface ExternalCliRunInput {
   prompt: string;
   cwd: string;
   settings: ObsigravitySettings;
+  timeoutMs?: number;
   activeNotePath?: string;
   activeNoteContent?: string;
   selectedText?: string;
@@ -36,7 +37,7 @@ export async function runExternalCli(input: ExternalCliRunInput): Promise<Extern
   const invocation = buildInvocation(input.id, input.settings.permissionMode, input.settings.preferredModel, input.cwd, prompt);
   let output = '';
   try {
-    output = await runProcess(command, invocation.args, env, input.cwd, invocation.stdin);
+    output = await runProcess(command, invocation.args, env, input.cwd, invocation.stdin, input.timeoutMs);
   } finally {
     invocation.cleanup?.();
   }
@@ -112,7 +113,7 @@ function buildExternalPrompt(input: ExternalCliRunInput): string {
   return parts.join('\n');
 }
 
-function runProcess(command: string, args: string[], env: NodeJS.ProcessEnv, cwd: string, stdin?: string): Promise<string> {
+function runProcess(command: string, args: string[], env: NodeJS.ProcessEnv, cwd: string, stdin?: string, timeoutMs = 180_000): Promise<string> {
   return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
@@ -126,8 +127,8 @@ function runProcess(command: string, args: string[], env: NodeJS.ProcessEnv, cwd
 
     const timeout = globalThis.setTimeout(() => {
       child.kill('SIGTERM');
-      reject(new Error(`${path.basename(command)} timed out after 180 seconds`));
-    }, 180_000);
+      reject(new Error(`${path.basename(command)} timed out after ${Math.round(timeoutMs / 1000)} seconds`));
+    }, timeoutMs);
 
     child.stdout?.on('data', (chunk: Buffer) => {
       stdout += chunk.toString();

@@ -4,6 +4,8 @@ import type { App, TFile } from 'obsidian';
 import { runExternalCli } from '../cli/ExternalCliRunner';
 import type { ObsigravitySettings } from '../types';
 
+const GROK_VIDEO_TIMEOUT_MS = 15 * 60 * 1000;
+
 function sanitizeName(input: string): string {
   return input
     .toLowerCase()
@@ -50,12 +52,13 @@ export async function generateGrokVideoFromNote(request: GenerateGrokVideoReques
   const filename = `${sanitizeName(`${request.file.basename}-grok-video`)}-${Date.now()}.mp4`;
   const vaultRelativePath = path.posix.join(normalizedFolder, filename);
 
-  request.onProgress?.('Asking Grok Build to generate and save the MP4...');
+  request.onProgress?.('Asking Grok Build to generate and save the MP4... this can take up to 15 minutes.');
   const result = await runExternalCli({
     id: 'grok',
     prompt: buildGrokVideoPrompt(vaultRelativePath, request),
     cwd: request.vaultPath,
     settings: request.settings,
+    timeoutMs: GROK_VIDEO_TIMEOUT_MS,
     activeNotePath: request.file.path,
     activeNoteContent: request.noteContent,
     selectedText: request.selectedText,
