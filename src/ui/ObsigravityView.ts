@@ -8,11 +8,6 @@ import type { ConversationMessage, ConversationSession, PermissionMode, Preferre
 
 export const VIEW_TYPE_OBSIGRAVITY = 'obsigravity-view';
 
-const OBSIGRAVITY_LOGO = {
-  viewBox: '0 0 24 24',
-  path: 'M12 2.8a4.2 4.2 0 0 1 3.64 2.1 4.2 4.2 0 0 1 5.56 5.56A4.2 4.2 0 0 1 19.1 14.1a4.2 4.2 0 0 1-5.56 5.56A4.2 4.2 0 0 1 9.9 21.2a4.2 4.2 0 0 1-5.56-5.56A4.2 4.2 0 0 1 2.8 12a4.2 4.2 0 0 1 2.1-3.64A4.2 4.2 0 0 1 10.46 2.8 4.4 4.4 0 0 1 12 2.8Zm0 2.1a2.1 2.1 0 0 0-1.05.28L7.32 7.27a2.1 2.1 0 0 0-1.05 1.82v4.18a2.1 2.1 0 0 0 1.05 1.82l3.63 2.09a2.1 2.1 0 0 0 2.1 0l3.63-2.09a2.1 2.1 0 0 0 1.05-1.82V9.09a2.1 2.1 0 0 0-1.05-1.82l-3.63-2.09A2.1 2.1 0 0 0 12 4.9Zm0 3.1 3.46 2v4L12 16l-3.46-2v-4L12 8Z',
-};
-
 interface SlashCommand {
   name: string;
   hint: string;
@@ -110,16 +105,7 @@ export class ObsigravityView extends ItemView {
   private buildHeader(header: HTMLElement): void {
     const titleContainer = header.createDiv({ cls: 'oc-title' });
     const logoEl = titleContainer.createSpan({ cls: 'oc-logo' });
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', OBSIGRAVITY_LOGO.viewBox);
-    svg.setAttribute('width', '18');
-    svg.setAttribute('height', '18');
-    svg.setAttribute('fill', 'none');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', OBSIGRAVITY_LOGO.path);
-    path.setAttribute('fill', 'currentColor');
-    svg.appendChild(path);
-    logoEl.appendChild(svg);
+    setIcon(logoEl, OBSIGRAVITY_ICON);
     titleContainer.createEl('h4', { text: 'Obsigravity' });
 
     const headerActions = header.createDiv({ cls: 'oc-header-actions' });

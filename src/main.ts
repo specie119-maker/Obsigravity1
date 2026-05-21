@@ -1,4 +1,4 @@
-import { addIcon, MarkdownView, Notice, Plugin, type TFile } from 'obsidian';
+import { MarkdownView, Notice, Plugin, type TFile } from 'obsidian';
 
 import { AntigravityProvider } from './core/agent/AntigravityProvider';
 import { findAntigravityCli } from './core/antigravity/AntigravityCliResolver';
@@ -17,14 +17,7 @@ import { VisualGenerationProgressModal } from './ui/modals/VisualGenerationProgr
 import { VisualPromptPreviewModal } from './ui/modals/VisualPromptPreviewModal';
 import { ObsigravitySettingsTab } from './ui/settings/ObsigravitySettingsTab';
 
-export const OBSIGRAVITY_ICON = 'obsigravity-orbit';
-
-const OBSIGRAVITY_ICON_SVG = [
-  '<path d="M12 3.5c2.15 0 3.9 1.75 3.9 3.9s-1.75 3.9-3.9 3.9-3.9-1.75-3.9-3.9 1.75-3.9 3.9-3.9Z"/>',
-  '<path d="M12 13.1c-3.95 0-7.15 1.57-7.15 3.5S8.05 20.1 12 20.1s7.15-1.57 7.15-3.5S15.95 13.1 12 13.1Z"/>',
-  '<path d="M4.35 15.25c-1.85-1.1-2.55-2.55-1.78-3.87 1-1.72 4.63-1.83 8.1-.24s5.47 4.28 4.47 6c-.58 1-2.12 1.46-4.03 1.33"/>',
-  '<path d="M19.65 8.75c1.85 1.1 2.55 2.55 1.78 3.87-1 1.72-4.63 1.83-8.1.24s-5.47-4.28-4.47-6c.58-1 2.12-1.46 4.03-1.33"/>',
-].join('');
+export const OBSIGRAVITY_ICON = 'bot';
 
 interface ActiveNoteContext {
   file: TFile;
@@ -43,8 +36,6 @@ export default class ObsigravityPlugin extends Plugin {
     await this.loadSettings();
     await this.autofillAntigravityCliPath();
     this.agent = new AntigravityProvider(() => this.settings);
-    addIcon(OBSIGRAVITY_ICON, OBSIGRAVITY_ICON_SVG);
-
     this.registerView(VIEW_TYPE_OBSIGRAVITY, (leaf) => new ObsigravityView(leaf, this));
 
     this.addRibbonIcon(OBSIGRAVITY_ICON, 'Open Obsigravity', () => {
