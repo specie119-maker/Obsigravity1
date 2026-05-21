@@ -1,4 +1,4 @@
-export type BuiltinSkillId = 'note-surgeon' | 'atomic-split' | 'vault-cartographer' | 'skill-forge';
+export type BuiltinSkillId = 'note-surgeon' | 'atomic-split' | 'vault-cartographer' | 'skill-forge' | 'sukgo';
 
 export interface BuiltinSkill {
   id: BuiltinSkillId;
@@ -182,10 +182,71 @@ export const BUILTIN_SKILLS: BuiltinSkill[] = [
       withOptionalRequest(request),
     ].join('\n'),
   },
+  {
+    id: 'sukgo',
+    slash: '/sukgo',
+    name: 'Sukgo Decision Lab',
+    hint: 'Think through a decision',
+    description: 'Apply sukgo-style decision frameworks to the active note: steelman, devil, premortem, 6 hats, inversion, 5 whys, matrix, first principles, OODA, and Toulmin.',
+    buildPrompt: (request) => [
+      COMMON_OBSIDIAN_RULES,
+      '',
+      '# Built-in Skill: Sukgo Decision Lab',
+      '',
+      'Goal: help the user think better about a decision, plan, claim, investment, career move, education question, or strategy using sukgo-style thinking frameworks.',
+      '',
+      'Context:',
+      '- The original sukgo project is a Korean decision-making CLI. This Obsigravity skill ports its core thinking workflow into an Obsidian-native Antigravity skill.',
+      '- Use the active note, selected text, and pinned notes as the decision context.',
+      '- Do not require the separate sukgo CLI unless the user explicitly asks for CLI execution.',
+      '',
+      'Framework menu:',
+      '- steelman: strongest opposing argument',
+      '- devil: adversarial critique',
+      '- premortem: failure simulation',
+      '- 6hats: six thinking hats',
+      '- inversion: reverse thinking',
+      '- 5whys: root cause analysis',
+      '- matrix: weighted decision matrix',
+      '- first-principles: reduce to fundamentals',
+      '- ooda: observe-orient-decide-act',
+      '- toulmin: claim, grounds, warrant, backing, rebuttal',
+      '- compare: use 3-5 relevant frameworks and synthesize',
+      '',
+      'Routing rules:',
+      '1. If the request names a framework, use that framework.',
+      '2. If no framework is named, choose compare mode with 3 frameworks that best fit the active note.',
+      '3. For investment notes, include risk, thesis, counter-thesis, catalysts, and decision triggers.',
+      '4. For career or education notes, include values, constraints, stakeholders, and next experiments.',
+      '5. Be direct and concrete. The output should sharpen the user\'s decision, not merely summarize the note.',
+      '',
+      'Output format:',
+      '## Sukgo Decision Lab',
+      '- Decision or question being analyzed',
+      '- Frameworks used',
+      '',
+      '## Analysis',
+      '- Use clear Korean headings for each selected framework.',
+      '',
+      '## Decision Synthesis',
+      '- Best current answer',
+      '- Strongest counterargument',
+      '- Unknowns that matter',
+      '- 3 next actions',
+      '',
+      '## Obsidian Follow-up',
+      '- Suggested wikilinks',
+      '- Atomic notes worth creating',
+      '- Optional tags/frontmatter improvements',
+      '',
+      'If safe editing is available and the user explicitly asks to save/apply, create a concise decision note in `000-Inbox` or update only the active note with a "Sukgo analysis" section.',
+      withOptionalRequest(request),
+    ].join('\n'),
+  },
 ];
 
 export function getBuiltinSkillBySlash(prompt: string): { skill: BuiltinSkill; request: string } | null {
-  const match = prompt.match(/^\/(note-surgeon|atomic-split|vault-cartographer|skill-forge)(?:\s+([\s\S]+))?$/);
+  const match = prompt.match(/^\/(note-surgeon|atomic-split|vault-cartographer|skill-forge|sukgo)(?:\s+([\s\S]+))?$/);
   if (!match) return null;
   const skill = BUILTIN_SKILLS.find((item) => item.id === match[1]);
   if (!skill) return null;
