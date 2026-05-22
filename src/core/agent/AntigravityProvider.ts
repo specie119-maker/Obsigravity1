@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'child_process';
+import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -101,13 +102,7 @@ export class AntigravityProvider implements AgentProvider {
     env: NodeJS.ProcessEnv,
     cwd: string
   ): AsyncGenerator<AgentEvent> {
-    const child = spawn(command, args, {
-      cwd,
-      env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
-      windowsHide: true,
-    });
+    const child = this.spawnAgy(command, args, env, cwd);
     this.currentProcess = child;
 
     const queue: AgentEvent[] = [];
@@ -122,7 +117,7 @@ export class AntigravityProvider implements AgentProvider {
       child.kill();
     }, 5 * 60 * 1000);
 
-    child.stdout.on('data', (chunk: Buffer) => {
+    child.stdout!.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
       stdoutFull += text;
       stdoutBuffer += text;
@@ -133,7 +128,7 @@ export class AntigravityProvider implements AgentProvider {
         if (progress) queue.push({ type: 'progress', content: progress });
       }
     });
-    child.stderr.on('data', (chunk: Buffer) => {
+    child.stderr!.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
       stderrFull += text;
       stderrBuffer += text;
@@ -191,6 +186,92 @@ export class AntigravityProvider implements AgentProvider {
   }
 
   private cleanOutput(text: string): string {
-    return text.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '');
+    return text
+      .replace(/\][^]*/g, '')
+      .replace(/\[[0-9;?]*[ -/]*[@-~]/g, '')
+      .replace(/[A-PR-Z\_]/g, '');
+  }
+
+  private spawnAgy(command: string, args: string[], env: NodeJS.ProcessEnv, cwd: string): ChildProcess {
+    if (process.platform !== 'win32') {
+      return spawn(command, args, {
+        cwd,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: false,
+        windowsHide: true,
+      });
+    }
+
+    // Windows: agy --print silently drops stdout when not attached to a TTY
+    // (upstream bug google-antigravity/antigravity-cli#76). Wrap with
+    // conhost.exe --headless so AGY runs inside a real pseudo-console; the
+    // TUI escape sequences it emits are stripped later in cleanOutput().
+    // stdin MUST be a pipe (not 'ignore'): when stdin is mapped to NUL,
+    // conhost --headless exits ~immediately and AGY produces no output.
+    const conhost = this.findConhost();
+    const lower = command.toLowerCase();
+    let target = command;
+    let targetArgs = args;
+    if (lower.endsWith('.cmd') || lower.endsWith('.bat')) {
+      const exeSibling = command.replace(/\.(cmd|bat)$/i, '.exe');
+      try {
+        if (fs.existsSync(exeSibling) && fs.statSync(exeSibling).isFile()) {
+          target = exeSibling;
+        } else {
+          target = 'cmd.exe';
+          targetArgs = ['/d', '/s', '/c', command, ...args];
+        }
+      } catch {
+        target = 'cmd.exe';
+        targetArgs = ['/d', '/s', '/c', command, ...args];
+      }
+    }
+
+    if (conhost) {
+      // Leave stdin OPEN until AGY exits. conhost --headless tears down the
+      // ConPTY as soon as stdin closes, which makes AGY exit instantly with
+      // no model output. We never write to stdin; we just keep the pipe alive.
+      return spawn(conhost, ['--headless', '--', target, ...targetArgs], {
+        cwd,
+        env,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: false,
+        windowsHide: true,
+      });
+    }
+
+    if (target.toLowerCase().endsWith('.exe')) {
+      return spawn(target, targetArgs, {
+        cwd,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: false,
+        windowsHide: true,
+      });
+    }
+    return spawn(target, targetArgs, {
+      cwd,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: true,
+      windowsHide: true,
+    });
+  }
+
+  private findConhost(): string | null {
+    const candidates = [
+      process.env.SystemRoot ? path.join(process.env.SystemRoot, 'System32', 'conhost.exe') : '',
+      'C:\\Windows\\System32\\conhost.exe',
+      'C:\\WINDOWS\\System32\\conhost.exe',
+    ].filter(Boolean);
+    for (const candidate of candidates) {
+      try {
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+      } catch {
+        // Try next candidate.
+      }
+    }
+    return null;
   }
 }

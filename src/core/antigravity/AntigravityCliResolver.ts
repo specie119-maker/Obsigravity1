@@ -39,9 +39,14 @@ export function findAntigravityCli(customPath?: string, pathValue?: string): str
   }
 
   const home = os.homedir();
+  const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+  const programFiles = process.env['ProgramFiles'] || 'C:\\Program Files';
   const candidates = process.platform === 'win32'
     ? [
-        path.join(process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'), 'antigravity-cli', 'agy.exe'),
+        path.join(localAppData, 'agy', 'bin', 'agy.exe'),
+        path.join(localAppData, 'antigravity-cli', 'agy.exe'),
+        path.join(localAppData, 'Programs', 'agy', 'agy.exe'),
+        path.join(programFiles, 'Antigravity', 'agy.exe'),
         path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), 'npm', 'agy.cmd'),
       ]
     : [
