@@ -62,6 +62,16 @@ On this machine, the CLI is typically detected at:
 ~/.local/bin/agy
 ```
 
+### Windows Notes
+
+Obsigravity includes a Windows-specific Antigravity launch path for `agy --print`.
+On Windows, GUI apps such as Obsidian do not provide the same terminal/TTY environment
+as a normal shell. Older Obsigravity builds could therefore show only
+`Antigravity process started` or return an empty/error response even though AGY had
+completed a model round trip. The current build avoids `cmd.exe` argument mangling,
+detects common official `agy.exe` install locations, and routes AGY through
+`conhost.exe --headless` when needed so stdout reaches the plugin.
+
 ## One-click Setup
 
 Open **Obsidian Settings -> Community plugins -> Obsigravity**.
@@ -147,3 +157,8 @@ Then enable **Obsigravity** in Obsidian settings.
 - Auto and Yolo auto-approve Antigravity tool permission requests and should only be used in trusted, backed-up vaults.
 - Generated files are saved inside the configured vault media folder.
 - Obsigravity keeps AGY-native video/TTS disabled unless Antigravity exposes native generation support. Grok Build video is an explicit external-CLI lane.
+
+## Contributors
+
+- [reallygood83](https://github.com/reallygood83) - project creator and maintainer.
+- [starhunt](https://github.com/starhunt) - Windows Antigravity CLI launch fix, including ConPTY handling and official `agy.exe` path detection.
