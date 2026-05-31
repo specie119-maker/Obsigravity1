@@ -644,19 +644,19 @@ def create_excel():
         ws2.column_dimensions[get_column_letter(col)].width = 18
 
     ws2.merge_cells("A1:H1")
-    ws2["A1"] = "급여제공지침 첨부 교육자료"
-    ws2["A1"].font = Font(size=30, bold=True)
-    ws2["A1"].alignment = Alignment(horizontal="center", vertical="center")
-    ws2.row_dimensions[1].height = 40
+ws2["A1"] = "급여제공지침 첨부 교육자료"
+ws2["A1"].font = Font(size=30, bold=True)
+ws2["A1"].alignment = Alignment(horizontal="center", vertical="center")
+ws2.row_dimensions[1].height = 32
 
-    row = 3
-    for item in selected:
-        ws2.merge_cells(start_row=row, start_column=1, end_row=row, end_column=8)
-        ws2.cell(row, 1).value = item
-        ws2.cell(row, 1).font = Font(size=20, bold=True)
-        ws2.cell(row, 1).alignment = Alignment(horizontal="center", vertical="center")
-        ws2.row_dimensions[row].height = 28
-        row += 1
+row = 2
+for item in selected:
+    ws2.merge_cells(start_row=row, start_column=1, end_row=row, end_column=8)
+    ws2.cell(row, 1).value = item
+    ws2.cell(row, 1).font = Font(size=20, bold=True)
+    ws2.cell(row, 1).alignment = Alignment(horizontal="center", vertical="center")
+    ws2.row_dimensions[row].height = 32
+    row += 1
 
         text = (
             f"교육목적\n{GUIDELINES[item]['purpose']}\n\n"
@@ -679,11 +679,11 @@ def create_excel():
     ws3["A1"].alignment = Alignment(horizontal="center", vertical="center")
     ws3.row_dimensions[1].height = 40
 
-    ws3.merge_cells("A3:H8")
-    ws3["A3"] = result_text
-    ws3["A3"].alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+    ws3.merge_cells("A2:H6")
+    ws3["A2"] = result_text
+    ws3["A2"].alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
-    ws3.merge_cells("A10:H14")
+    ws3.merge_cells("A7:H11")
     ws3["A10"] = (
         "평가 대비 권장사항\n"
         "- 교육사진 1~2장 첨부\n"
@@ -691,7 +691,7 @@ def create_excel():
         "- 교육자료 함께 편철\n"
         "- 교육일자, 강사, 참석자, 교육내용 누락 여부 확인"
     )
-    ws3["A10"].alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+    ws3["A7"].alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
     style_sheet(ws, border)
     style_sheet(ws2, border)
