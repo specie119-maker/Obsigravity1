@@ -650,6 +650,8 @@ ws2["A1"].alignment = Alignment(horizontal="center", vertical="center")
 ws2.row_dimensions[1].height = 32
 
 row = 2
+row = 2
+row = 2
 for item in selected:
     ws2.merge_cells(start_row=row, start_column=1, end_row=row, end_column=8)
     ws2.cell(row, 1).value = item
@@ -663,11 +665,11 @@ for item in selected:
         f"주요 교육내용\n{GUIDELINES[item]['content']}\n\n"
         f"{GUIDELINES[item]['material']}"
     )
-        ws2.merge_cells(start_row=row, start_column=1, end_row=row + 22, end_column=8)
-        ws2.cell(row, 1).value = text
-        ws2.cell(row, 1).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-        row += 24
 
+    ws2.merge_cells(start_row=row, start_column=1, end_row=row + 22, end_column=8)
+    ws2.cell(row, 1).value = text
+    ws2.cell(row, 1).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+    row += 24
     # 교육결과 시트
     ws3 = wb.create_sheet("교육결과")
     for col in range(1, 9):
