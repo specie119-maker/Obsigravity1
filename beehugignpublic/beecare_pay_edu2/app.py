@@ -506,16 +506,22 @@ selected = st.session_state.selected_guidelines
 
 if selected:
     st.success(f"{len(selected)}개 지침이 선택되었습니다.")
+    for item in selected:
+        with st.expander(item):
+            st.markdown("**교육목적**")
+            st.write(GUIDELINES[item]["purpose"])
+            st.markdown("**주요 교육내용**")
+            st.write(GUIDELINES[item]["content"])
+            st.markdown("**첨부자료**")
+            st.write(GUIDELINES[item]["material"])
 
 st.subheader("참석자 명단")
 roles = ["시설장", "사회복지사", "간호사/간호조무사", "요양보호사", "물리치료사", "기타"]
-
 attendees = []
 for role in roles:
     names = st.text_input(f"{role} 이름", placeholder="예: 김OO, 이OO")
     if names:
         attendees.append((role, names))
-
 
 def style_sheet(ws, border):
     for row in ws.iter_rows():
@@ -526,11 +532,10 @@ def style_sheet(ws, border):
                 vertical=cell.alignment.vertical or "center",
                 wrap_text=True
             )
-            if cell.value and cell.font.bold:
-                continue
-            if cell.row != 1:
-                cell.font = Font(size=11)
 
+            if not (cell.value and cell.font.bold):
+                if cell.row != 1:
+                    cell.font = Font(size=11)
 
 def create_excel():
     wb = Workbook()
@@ -540,10 +545,9 @@ def create_excel():
     ws = wb.active
     ws.title = "교육일지"
 
-    for col in range(1, 10):  # A~I만 사용
-        ws.column_dimensions[get_column_letter(col)].width = 16
+    for col in range(1, 11):
+        ws.column_dimensions[get_column_letter(col)].width = 14
 
-    # 제목 + 결재라인
     ws.merge_cells("A1:G2")
     ws["A1"] = "급여제공지침 교육일지"
     ws["A1"].font = Font(size=30, bold=True)
@@ -554,13 +558,11 @@ def create_excel():
     ws["H2"] = manager
     ws["I2"] = director
 
-    ws.row_dimensions[1].height = 40
-    ws.row_dimensions[2].height = 55
-
     rows = [
         ("교육명", " / ".join(selected) + " 교육"),
         ("교육일시", f"{education_date} {start_time} ~ {end_time}"),
         ("장소", place),
+        ("대상", "종사자 전원"),
         ("강사", instructor),
     ]
 
@@ -568,19 +570,17 @@ def create_excel():
     for title, value in rows:
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=2)
         ws.cell(r, 1).value = title
-        ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=9)
+        ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=10)
         ws.cell(r, 3).value = value
-        ws.row_dimensions[r].height = 25
         r += 1
 
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
     ws.cell(r, 1).value = "교육목적"
-    ws.cell(r, 1).font = Font(size=20, bold=True)
-    ws.row_dimensions[r].height = 30
+    ws.cell(r, 1).font = Font(bold=True)
     r += 1
 
     purpose_text = "\n\n".join([f"[{item}]\n{GUIDELINES[item]['purpose']}" for item in selected])
-    ws.merge_cells(start_row=r, start_column=1, end_row=r + 4, end_column=9)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r+4, end_column=9)
     ws.cell(r, 1).value = purpose_text
     ws.cell(r, 1).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
     r += 5
@@ -588,19 +588,17 @@ def create_excel():
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
     ws.cell(r, 1).value = "주요 교육내용"
     ws.cell(r, 1).font = Font(size=20, bold=True)
-    ws.row_dimensions[r].height = 30
     r += 1
 
     content_text = "\n\n".join([f"[{item}]\n{GUIDELINES[item]['content']}" for item in selected])
-    ws.merge_cells(start_row=r, start_column=1, end_row=r + 16, end_column=9)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r+14, end_column=9)
     ws.cell(r, 1).value = content_text
     ws.cell(r, 1).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-    r += 17
+    r += 15
 
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
     ws.cell(r, 1).value = "교육결과"
     ws.cell(r, 1).font = Font(size=20, bold=True)
-    ws.row_dimensions[r].height = 30
     r += 1
 
     result_text = "\n".join([f"- {RESULTS[item]}" for item in selected])
@@ -611,7 +609,7 @@ def create_excel():
         "실제 급여제공 과정에서 적용할 수 있도록 교육을 실시함."
     )
 
-    ws.merge_cells(start_row=r, start_column=1, end_row=r + 4, end_column=9)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r+4, end_column=9)
     ws.cell(r, 1).value = result_text
     ws.cell(r, 1).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
     r += 5
@@ -619,7 +617,6 @@ def create_excel():
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
     ws.cell(r, 1).value = "참석자 명단"
     ws.cell(r, 1).font = Font(bold=True)
-    ws.row_dimensions[r].height = 25
     r += 1
 
     ws.cell(r, 1).value = "직책"
@@ -634,59 +631,47 @@ def create_excel():
         ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=5)
         ws.cell(r, 2).value = names
         ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=9)
-        ws.cell(r, 6).value = ""
-        ws.row_dimensions[r].height = 24
         r += 1
 
-    # 첨부자료 시트
     ws2 = wb.create_sheet("첨부자료")
     for col in range(1, 9):
         ws2.column_dimensions[get_column_letter(col)].width = 18
 
     ws2.merge_cells("A1:H1")
-ws2["A1"] = "급여제공지침 첨부 교육자료"
-ws2["A1"].font = Font(size=30, bold=True)
-ws2["A1"].alignment = Alignment(horizontal="center", vertical="center")
-ws2.row_dimensions[1].height = 32
+    ws2["A1"] = "급여제공지침 첨부 교육자료"
+    ws2["A1"].font = Font(size=30, bold=True)
 
-row = 2
-row = 2
-row = 2
-for item in selected:
-    ws2.merge_cells(start_row=row, start_column=1, end_row=row, end_column=8)
-    ws2.cell(row, 1).value = item
-    ws2.cell(row, 1).font = Font(size=20, bold=True)
-    ws2.cell(row, 1).alignment = Alignment(horizontal="center", vertical="center")
-    ws2.row_dimensions[row].height = 32
-    row += 1
+    row = 2
+    for item in selected:
+        ws2.merge_cells(start_row=row, start_column=1, end_row=row, end_column=8)
+        ws2.cell(row, 1).value = item
+        ws2.cell(row, 1).font = Font(size=20, bold=True)
+        row += 1
 
-    text = (
-        f"교육목적\n{GUIDELINES[item]['purpose']}\n\n"
-        f"주요 교육내용\n{GUIDELINES[item]['content']}\n\n"
-        f"{GUIDELINES[item]['material']}"
-    )
+        text = (
+            f"교육목적\n{GUIDELINES[item]['purpose']}\n\n"
+            f"주요 교육내용\n{GUIDELINES[item]['content']}\n\n"
+            f"{GUIDELINES[item]['material']}"
+        )
+        ws2.merge_cells(start_row=row, start_column=1, end_row=row+22, end_column=8)
+        ws2.cell(row, 1).value = text
+        ws2.cell(row, 1).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        row += 24
 
-    ws2.merge_cells(start_row=row, start_column=1, end_row=row + 22, end_column=8)
-    ws2.cell(row, 1).value = text
-    ws2.cell(row, 1).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-    row += 24
-    # 교육결과 시트
     ws3 = wb.create_sheet("교육결과")
     for col in range(1, 9):
         ws3.column_dimensions[get_column_letter(col)].width = 18
 
     ws3.merge_cells("A1:H1")
     ws3["A1"] = "교육결과"
-    ws3["A1"].font = Font(size=22, bold=True)
-    ws3["A1"].alignment = Alignment(horizontal="center", vertical="center")
-    ws3.row_dimensions[1].height = 40
+    ws3["A1"].font = Font(size=30, bold=True)
 
     ws3.merge_cells("A2:H6")
     ws3["A2"] = result_text
     ws3["A2"].alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
     ws3.merge_cells("A7:H11")
-    ws3["A10"] = (
+    ws3["A7"] = (
         "평가 대비 권장사항\n"
         "- 교육사진 1~2장 첨부\n"
         "- 참석자 자필서명 확인\n"
