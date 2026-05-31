@@ -658,11 +658,11 @@ for item in selected:
     ws2.row_dimensions[row].height = 32
     row += 1
 
-        text = (
-            f"교육목적\n{GUIDELINES[item]['purpose']}\n\n"
-            f"주요 교육내용\n{GUIDELINES[item]['content']}\n\n"
-            f"{GUIDELINES[item]['material']}"
-        )
+    text = (
+        f"교육목적\n{GUIDELINES[item]['purpose']}\n\n"
+        f"주요 교육내용\n{GUIDELINES[item]['content']}\n\n"
+        f"{GUIDELINES[item]['material']}"
+    )
         ws2.merge_cells(start_row=row, start_column=1, end_row=row + 22, end_column=8)
         ws2.cell(row, 1).value = text
         ws2.cell(row, 1).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
