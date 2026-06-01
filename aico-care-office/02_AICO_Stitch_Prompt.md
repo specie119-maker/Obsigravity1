@@ -1,79 +1,54 @@
-# AICO 서비스 기획서
+# AICO Stitch Prompt
 
-## 서비스명
+Create a Korean SaaS website called AICO.
 
-AICO
+AICO means AI Care Office.
 
-AI Care Office
+Target users:
+Long-term care centers
+Home care agencies
+Day care centers
+Nursing homes
 
-장기요양기관 AI 케어 사무실
+Main services:
 
----
+- Consultation Log Generator
+- Education Log Generator
+- Meeting Minutes Generator
+- Face Privacy Transformer
+- Resource Library
+- AI Support Center
 
-## 서비스 목적
+Top Menu:
 
-장기요양기관 종사자의 문서 작성 시간을 줄이고
-어르신 돌봄에 더 많은 시간을 사용할 수 있도록 지원한다.
+홈
+기능소개
+상담일지
+교육일지
+회의록
+얼굴변환기
+자료실
+공지사항
+AI 고객지원센터
 
----
+Design Style:
 
-## 제공 기능
+Warm
+Trustworthy
+Senior-care friendly
 
-### 상담일지 자동작성
+Colors:
 
-방문요양
-주간보호
-요양원
+Cream White
+Beige
+Warm Brown
+Soft Gold
 
----
+Use large buttons and card-based layout.
 
-### 교육일지 자동작성
+Show coming soon sections:
 
-급여제공지침
-법정의무교육
-
----
-
-### 회의록 자동작성
-
-직원회의
-사례회의
-보호자회의
-
----
-
-### 개인정보 보호 얼굴변환기
-
-단체사진 얼굴변환
-AI 캐릭터 변환
-모자이크
-
----
-
-### 자료실
-
-교육자료
-평가자료
-서식자료
-
----
-
-### AI 고객지원센터
-
-FAQ
-사용가이드
-AI 문의
-
----
-
-## 향후 확장
-
-인지훈련센터
-
-디지털 신체훈련센터
-
-세무·회계 자동화
-
-요양보호사 자격증 퀴즈센터
-
-전자책 라이브러리
+- Cognitive Training Center
+- Digital Physical Training Center
+- Tax & Accounting Automation
+- Caregiver Certification Quiz Center
