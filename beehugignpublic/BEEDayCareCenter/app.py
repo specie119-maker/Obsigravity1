@@ -1,4 +1,20 @@
+from datetime import date
 import streamlit as st
+
+# 하루 3회 제한 설정
+DAILY_LIMIT = 3
+
+if "usage_date" not in st.session_state:
+    st.session_state.usage_date = date.today()
+
+if "download_count" not in st.session_state:
+    st.session_state.download_count = 0
+
+# 날짜가 바뀌면 횟수 초기화
+if st.session_state.usage_date != date.today():
+    st.session_state.usage_date = date.today()
+    st.session_state.download_count = 0
+
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
